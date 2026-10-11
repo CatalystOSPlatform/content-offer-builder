@@ -10,6 +10,16 @@ const knob = (on) => 'position:absolute;top:3px;left:' + (on ? 21 : 3) + 'px;wid
 const btnTab = (on) => 'display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:9px;font:800 13px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
 const EM_FIELDS = [['subject', 'Subject line', 1], ['preheader', 'Preview text', 1], ['eyebrow', 'Eyebrow', 1], ['headline', 'Headline', 1], ['body', 'Body', 7], ['bullets', 'Bullet points (one per line)', 4], ['cta', 'Button', 1], ['ps', 'P.S. (optional)', 2]];
 
+// Line icons for the left navigation (one per kind of offer), drawn in the CatalystOS violet.
+const ICON_PATHS = {
+  whitepaper: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6M9 9h2"/>',
+  guide: '<path d="M4 5a2 2 0 0 1 2-2h11v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M17 19v2H6"/><path d="M8 7h6M8 11h5"/>',
+  webinar: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M10.5 8.2v3.6L13.6 10z"/>',
+  workshop: '<circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0M11.5 19a4.5 4.5 0 0 1 9 0"/>',
+};
+const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#5A12D6') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
+const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:10px;display:flex;align-items:center;justify-content:center;' + (on ? 'background:#6818F8;' : 'background:#F1EBFF;');
+
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
     form: { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '' },
@@ -139,11 +149,11 @@ class Component extends DCLogic {
     const O = this.O, f = st.form, K = O.offerById(f.kind), o = this.offer(), isOffer = st.view === 'offer' && !!o;
     const campId = this.formCampId();
     const offerRows = st.offers.map((x) => { const on = x.id === st.offerId && isOffer; const nApp = (x.pages || []).filter((p) => p.approved).length + (x.emails || []).filter((e) => e.approved).length, nAll = (x.pages || []).length + (x.emails || []).length;
-      return { name: x.name || 'Content offer', meta: O.offerById(x.kind).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, delAsk: false, err: '' }),
-        style: 'display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
+      return { name: x.name || 'Content offer', meta: O.offerById(x.kind).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, delAsk: false, err: '' }),
+        style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
     const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, newOffer: () => this.setState({ view: 'new', offerId: null, err: '', delAsk: false }),
       campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => this.setForm({ camp: e.target.value }),
-      kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
+      kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
       dateVal: f.date, setDate: (e) => this.setForm({ date: e.target.value }), timeVal: f.time, setTime: (e) => this.setForm({ time: e.target.value }), whereVal: f.where, setWhere: (e) => this.setForm({ where: e.target.value }),
       peopleLabel: K.event ? 'Speakers or hosts (optional)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
