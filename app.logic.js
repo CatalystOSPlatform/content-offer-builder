@@ -175,6 +175,13 @@ class Component extends DCLogic {
   renderOfferPage(o, i, b, opts = {}) { const pg = o.pages[i]; if (o.kind === 'webinar' && o.tpl && o.tpl !== 'panels' && pg && pg.key === 'offer') return this.W.renderWebinar(o, i, b, { ...opts, tpl: o.tpl }); return this.K.renderPage(o, i, b, opts); }
   emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
+  // Webinars and workshops: make the event graphics (Zoom slides, banners, LinkedIn post, newsletter) in the Event Graphics Builder.
+  openGraphics = async () => {
+    const o = this.offer(); if (!o) return; const st = o.strategy || {};
+    const w = window.open('', '_blank'); this.setState({ gfxNote: 'Opening the Event Graphics Builder…' });
+    try { const url = await this.D.eventGraphicsUrl(o, st.title || o.title || o.name); if (w) { w.opener = null; w.location.href = url; } else location.href = url; this.setState({ gfxNote: '' }); }
+    catch (e) { if (w) w.close(); this.setState({ gfxNote: 'Could not open the Event Graphics Builder.' }); }
+  };
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
     const files = {}; o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
@@ -299,6 +306,8 @@ class Component extends DCLogic {
 
     // Launch
     const left = (nP - apP) + (nE - apE);
+    Object.assign(vals, { isEventOffer: !!O.offerById(o.kind).event, openGraphics: this.openGraphics, gfxNote: st.gfxNote || '', gfxNoteOn: !!st.gfxNote, gfxNoun: O.offerById(o.kind).noun,
+      gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
       urlVal: o.pageUrl || '', setUrl: (e) => { const v = e.target.value; this.update((x) => { x.pageUrl = v; return x; }); }, formVal: o.formUrl || '', setForm: (e) => { const v = e.target.value; this.update((x) => { x.formUrl = v; return x; }); },
       notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Build the pages and emails first.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
