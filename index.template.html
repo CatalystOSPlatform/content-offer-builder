@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Offer Builder · CatalystOS</title>
+<script>
+// Live site: sign in with CatalystOS (the dashboard passes the sign-in when it opens this app).
+(function () { try { var h = location.hostname; if (/vercel\.app$/i.test(h) || /catalyst/i.test(h) || h === 'localhost') document.write('<script src="https://pilot-dash-ten.vercel.app/cos-app-auth.js" data-require data-no-button data-no-back><\/script>'); } catch (e) {} })();
+</script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}</style>
+</helmet>
+<div style="min-height: 100vh; font-family: 'Public Sans', sans-serif; color: #14182B; display: flex; flex-direction: column; background-color: #FAF9FD; background-image: radial-gradient(#D6D2E4 1px, transparent 1px); background-size: 12px 12px;">
+<sc-if value="{{ showShell }}" hint-placeholder-val="{{ true }}">
+<dc-import name="Shell" app-name="Content Offer Builder" agency="{{ agency }}" client-name="{{ clientName }}" client-id="{{ clientId }}" email="{{ email }}" back-href="{{ backHref }}" clients="{{ clients }}" on-pick-client="{{ pickClient }}" on-sign-out="{{ signOut }}"></dc-import>
+</sc-if>
+
+<sc-if value="{{ notReady }}" hint-placeholder-val="{{ false }}">
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 60px 24px;">
+<div role="status" style="max-width: 460px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 14px; padding: 28px; display: flex; flex-direction: column; gap: 10px; text-align: center;">
+<sc-if value="{{ isLoading }}" hint-placeholder-val="{{ true }}"><span style="width: 28px; height: 28px; margin: 0 auto; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span></sc-if>
+<strong style="font: 800 17px Manrope, sans-serif;">{{ bootTitle }}</strong>
+<span style="font-size: 13px; color: #4A5168; line-height: 1.55;">{{ bootMsg }}</span>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+<div style="flex: 1; display: grid; grid-template-columns: 350px minmax(0, 1fr); min-height: 0;">
+
+<aside aria-label="Content offers" style="background: #FFFFFF; border-right: 1px solid #E6E8EC; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;">
+<button type="button" onClick="{{ newOffer }}" style="height: 42px; border: none; border-radius: 10px; background: linear-gradient(135deg,#1921FE,#6818F8); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">New content offer +</button>
+<sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="cob-new" style="display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #DCCCFE; border-radius: 14px; background: #FBF9FF;">
+<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer. We plan the strategy first; once you’re happy with it, we write and design the landing pages and the email sequence.</p></div>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Campaign</span>
+<select value="{{ campVal }}" onChange="{{ setCamp }}" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF;"><option value="none">No campaign (we choose a timely direction)</option><sc-for list="{{ campOptions }}" as="co" hint-placeholder-count="2"><option value="{{ co.id }}">{{ co.label }}</option></sc-for></select></label>
+<sc-if value="{{ noCamps }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 12px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 7px 10px; line-height: 1.45;">This client has no campaigns in Brand Command yet. Add one there, or go ahead without a campaign.</p></sc-if>
+<fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;"><legend class="cob-lbl" style="margin-bottom: 8px;">Kind of offer</legend>
+<sc-for list="{{ kindCards }}" as="kc" hint-placeholder-count="4">
+<button type="button" onClick="{{ kc.pick }}" aria-pressed="{{ kc.pressed }}" style="{{ kc.style }}"><span style="font: 800 14px Manrope, sans-serif; color: #081A53;">{{ kc.label }}</span><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ kc.desc }}</span></button>
+</sc-for>
+</fieldset>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Working title (optional)</span><input value="{{ titleVal }}" onInput="{{ setTitle }}" placeholder="We suggest one if left blank" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 12px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B;" /></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Topic or notes (optional)</span><textarea value="{{ topicVal }}" onInput="{{ setTopic }}" rows="3" placeholder="What it covers, who it’s for, anything we must include" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B; resize: vertical;"></textarea></label>
+<sc-if value="{{ isEvent }}" hint-placeholder-val="{{ false }}">
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Date</span><input value="{{ dateVal }}" onInput="{{ setDate }}" placeholder="e.g. Nov 12, 2026" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Time</span><input value="{{ timeVal }}" onInput="{{ setTime }}" placeholder="e.g. 1:00 PM ET" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Where</span><input value="{{ whereVal }}" onInput="{{ setWhere }}" placeholder="Online (Zoom) or an address" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<p style="margin: 0; font-size: 12px; color: #4A5168; line-height: 1.45;">Leave anything blank and we’ll put a [placeholder] in the copy for you to fill in. We never make up dates or times.</p>
+</sc-if>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ peopleLabel }}</span><input value="{{ peopleVal }}" onInput="{{ setPeople }}" placeholder="From your Brand Command team" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 12px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+<button type="button" onClick="{{ plan }}" disabled="{{ busy }}" style="{{ planStyle }}">{{ planLabel }}</button>
+<span role="status" style="font-size: 13px; color: #3B1A8F;">{{ busyMsg }}</span>
+</div>
+</section>
+</sc-if>
+<span class="cob-lbl" style="margin-top: 6px; color: #59627A;">{{ offersLabel }}</span>
+<sc-if value="{{ noOffers }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.5;">No content offers yet. Click New content offer to plan one.</p></sc-if>
+<sc-for list="{{ offerRows }}" as="or" hint-placeholder-count="3">
+<button type="button" onClick="{{ or.open }}" aria-current="{{ or.current }}" style="{{ or.style }}"><span style="font: 700 13.5px Manrope, sans-serif; color: #14182B;">{{ or.name }}</span><span style="font-size: 12px; color: #4A5168;">{{ or.meta }}</span></button>
+</sc-for>
+</aside>
+
+<main style="min-width: 0; padding: 22px 26px; display: flex; flex-direction: column; gap: 16px;">
+
+<sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="cob-how" style="display: flex; flex-direction: column; gap: 16px; max-width: 1100px;">
+<h2 id="cob-how" style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53;">{{ funnelTitle }}</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+<sc-for list="{{ howSteps }}" as="hs" hint-placeholder-count="4"><li style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px;"><span style="width: 26px; height: 26px; border-radius: 50%; background: #F1EBFF; color: #5A12D6; font: 800 13px Manrope, sans-serif; display: flex; align-items: center; justify-content: center;">{{ hs.n }}</span><strong style="font: 800 14px Manrope, sans-serif; color: #081A53;">{{ hs.title }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.5;">{{ hs.text }}</span></li></sc-for>
+</ol>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px;">
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Landing pages</h3>
+<sc-for list="{{ funnelPages }}" as="fp" hint-placeholder-count="2"><div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid #EEF0F4;"><strong style="font: 700 13.5px Manrope, sans-serif;">{{ fp.title }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ fp.text }}</span></div></sc-for></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Email sequence (starting point)</h3>
+<sc-for list="{{ funnelEmails }}" as="fe" hint-placeholder-count="6"><div style="display: grid; grid-template-columns: 26px 1fr 170px; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF0F4; align-items: start;"><span style="font: 800 12px Manrope, sans-serif; color: #5A12D6;">{{ fe.n }}</span><span style="display: flex; flex-direction: column; gap: 2px;"><strong style="font: 700 13.5px Manrope, sans-serif;">{{ fe.name }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ fe.goal }}</span></span><span style="font-size: 12px; color: #4A5168; line-height: 1.45;">{{ fe.when }}<br>To: {{ fe.to }}</span></div></sc-for></div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ isOffer }}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><h1 style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53;">{{ offerName }}</h1><span style="font-size: 12.5px; color: #4A5168;">{{ offerMeta }}</span></div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+<span role="status" style="font-size: 12px; color: #4A5168;">{{ savedText }}</span>
+<button type="button" onClick="{{ removeOffer }}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid rgba(180,35,24,0.35); background: #FFFFFF; color: #B42318; font: 700 13px Manrope, sans-serif; cursor: pointer;">{{ removeLabel }}</button>
+</div>
+</div>
+<sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 13px; color: #3B1A8F; background: #F1EBFF; border-radius: 10px; padding: 9px 12px; display: flex; align-items: center; gap: 10px;"><span style="width: 16px; height: 16px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span>{{ busyMsg }}</p></sc-if>
+<div role="tablist" aria-label="Offer sections" style="display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #E6E8EC; padding-bottom: 8px;">
+<sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{ tb.selected }}" onClick="{{ tb.pick }}" style="{{ tb.style }}">{{ tb.label }}<span style="{{ tb.badgeStyle }}">{{ tb.badge }}</span></button></sc-for>
+</div>
+
+<sc-if value="{{ tabStrategy }}" hint-placeholder-val="{{ true }}">
+<section aria-label="Strategy" style="display: flex; flex-direction: column; gap: 14px; max-width: 1150px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
+<div style="display: flex; align-items: center; gap: 10px;"><span style="{{ stratPillStyle }}">{{ stratPill }}</span><span style="font-size: 12.5px; color: #4A5168;">{{ stratBy }}</span></div>
+<div style="display: flex; align-items: center; gap: 12px;"><span id="cob-sa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve strategy</span><button type="button" role="switch" aria-checked="{{ stratApprovedAria }}" aria-labelledby="cob-sa" onClick="{{ toggleStrat }}" style="{{ stratTrack }}"><span style="{{ stratKnob }}"></span></button>
+<button type="button" onClick="{{ buildAll }}" disabled="{{ busy }}" style="{{ buildStyle }}">{{ buildLabel }}</button></div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
+<span class="cob-lbl">The offer</span><h2 style="margin: 0; font: 800 22px Manrope, sans-serif; color: #081A53;">{{ sTitle }}</h2>
+<p style="margin: 0; font-size: 14px; color: #2A3045; line-height: 1.6;">{{ sSummary }}</p>
+<sc-if value="{{ hasTitleOptions }}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;"><span style="font-size: 12px; color: #4A5168;">Other titles:</span><sc-for list="{{ titleOptions }}" as="to" hint-placeholder-count="2"><button type="button" onClick="{{ to.pick }}" style="height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 700 12px Manrope, sans-serif; cursor: pointer;">{{ to.label }}</button></sc-for></div></sc-if>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+<sc-for list="{{ decisions }}" as="dc" hint-placeholder-count="3"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><span class="cob-lbl">{{ dc.label }}</span><strong style="font: 700 14.5px Manrope, sans-serif; color: #14182B; line-height: 1.4;">{{ dc.text }}</strong><sc-if value="{{ dc.extra }}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: #2A3045; line-height: 1.5;">{{ dc.extra }}</span></sc-if><span style="font-size: 12.5px; color: #3B1A8F; background: #F6F2FF; border-radius: 8px; padding: 7px 9px; line-height: 1.5;"><b>Why:</b> {{ dc.why }}</span><sc-if value="{{ dc.source }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #4A5168;"><b>Source:</b> {{ dc.source }}</span></sc-if></div></sc-for>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><span class="cob-lbl">Why a {{ kindNoun }} fits</span><p style="margin: 0; font-size: 13.5px; color: #2A3045; line-height: 1.6;">{{ sFit }}</p><span class="cob-lbl" style="margin-top: 6px;">What they get</span><ul style="margin: 0; padding-left: 18px; font-size: 13.5px; color: #2A3045; line-height: 1.6;"><sc-for list="{{ promise }}" as="pr" hint-placeholder-count="3"><li>{{ pr.text }}</li></sc-for></ul></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Landing pages</h3>
+<sc-for list="{{ planPages }}" as="pp" hint-placeholder-count="2"><div style="display: grid; grid-template-columns: 170px 1fr 1fr; gap: 12px; padding: 9px 0; border-top: 1px solid #EEF0F4; font-size: 13px; line-height: 1.5;"><strong style="font-family: Manrope, sans-serif;">{{ pp.title }}</strong><span>{{ pp.job }}</span><span style="color: #3B1A8F;"><b>Why:</b> {{ pp.why }}</span></div></sc-for></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Email sequence</h3>
+<sc-for list="{{ planEmails }}" as="pe" hint-placeholder-count="5"><div style="display: grid; grid-template-columns: 24px 190px 1fr 1fr 34px; gap: 12px; padding: 9px 0; border-top: 1px solid #EEF0F4; font-size: 13px; line-height: 1.5; align-items: start;"><span style="font: 800 12px Manrope, sans-serif; color: #5A12D6;">{{ pe.n }}</span><span style="display: flex; flex-direction: column;"><strong style="font-family: Manrope, sans-serif;">{{ pe.name }}</strong><span style="font-size: 12px; color: #4A5168;">{{ pe.when }} · to {{ pe.to }}</span></span><span>{{ pe.goal }}</span><span style="color: #3B1A8F;"><b>Why:</b> {{ pe.why }}</span><button type="button" onClick="{{ pe.remove }}" aria-label="{{ pe.removeLabel }}" title="Remove this email" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #B42318; font: 800 14px Manrope, sans-serif; cursor: pointer;">×</button></div></sc-for></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">How we’ll measure it</h3><sc-for list="{{ metrics }}" as="mt" hint-placeholder-count="3"><div style="font-size: 13px; line-height: 1.5; padding: 6px 0; border-top: 1px solid #EEF0F4;"><strong>{{ mt.name }}</strong> — {{ mt.target }}<br><span style="color: #3B1A8F;">{{ mt.why }}</span></div></sc-for></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Assumptions to confirm</h3><ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #2A3045;"><sc-for list="{{ assumptions }}" as="as" hint-placeholder-count="2"><li>{{ as.text }}</li></sc-for></ul><h3 style="margin: 8px 0 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Risks and how we handle them</h3><ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #2A3045;"><sc-for list="{{ risks }}" as="rk" hint-placeholder-count="2"><li>{{ rk.text }}</li></sc-for></ul></div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Ask for changes</span><textarea value="{{ noteVal }}" onInput="{{ setNote }}" rows="3" placeholder="e.g. Aim at RIA founders under $500M, drop the last-chance email, lead with compliance" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label>
+<button type="button" onClick="{{ replan }}" disabled="{{ busy }}" style="align-self: flex-start; height: 38px; padding: 0 16px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer;">Revise the strategy</button>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{ tabPages }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Landing pages" style="display: flex; flex-direction: column; gap: 12px;">
+<sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">The landing pages are written after the strategy. Go to Strategy and click Build.</p></sc-if>
+<sc-if value="{{ hasPages }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;">
+<div role="group" aria-label="Pages" style="display: flex; flex-wrap: wrap; gap: 6px;"><sc-for list="{{ pageTabs }}" as="pt" hint-placeholder-count="2"><button type="button" onClick="{{ pt.pick }}" aria-current="{{ pt.current }}" style="{{ pt.style }}">{{ pt.title }}<span style="{{ pt.pillStyle }}">{{ pt.pill }}</span></button></sc-for></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<label style="display: flex; align-items: center; gap: 8px;"><span class="cob-lbl">Design</span><select value="{{ designVal }}" onChange="{{ setDesign }}" style="height: 36px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 8px; font: 600 13px 'Public Sans', sans-serif;"><sc-for list="{{ designOptions }}" as="dz" hint-placeholder-count="6"><option value="{{ dz.id }}">{{ dz.name }}</option></sc-for></select></label>
+<span id="cob-pa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve page</span><button type="button" role="switch" aria-checked="{{ pageApprovedAria }}" aria-labelledby="cob-pa" onClick="{{ togglePage }}" style="{{ pageTrack }}"><span style="{{ pageKnob }}"></span></button>
+</div>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #4A5168;">Click any text in the page to edit it. Use the arrows on each panel to try its other layouts.</p>
+<sc-if value="{{ hasField }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #DCCCFE; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px;"><label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ fieldLabel }}</span><textarea value="{{ fieldVal }}" onInput="{{ setFieldVal }}" rows="3" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif;"></textarea></label><div style="display: flex; gap: 8px;"><button type="button" onClick="{{ saveField }}" style="height: 34px; padding: 0 14px; border-radius: 9px; border: none; background: linear-gradient(160deg,#C2410C,#9A3412); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Save</button><button type="button" onClick="{{ cancelField }}" style="height: 34px; padding: 0 12px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 700 13px Manrope, sans-serif; cursor: pointer;">Cancel</button></div></div></sc-if>
+<iframe title="{{ pageFrameTitle }}" srcdoc="{{ pageDoc }}" style="width: 100%; height: 900px; border: 1px solid #E6E8EC; border-radius: 12px; background: #FFFFFF;"></iframe>
+</sc-if>
+</section>
+</sc-if>
+
+<sc-if value="{{ tabEmails }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Emails" style="display: flex; flex-direction: column; gap: 12px;">
+<sc-if value="{{ noEmails }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">The emails are written after the strategy. Go to Strategy and click Build.</p></sc-if>
+<sc-if value="{{ hasEmails }}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start;">
+<div role="group" aria-label="Emails in the sequence" style="display: flex; flex-direction: column; gap: 6px;"><sc-for list="{{ emailRows }}" as="er" hint-placeholder-count="6"><button type="button" onClick="{{ er.pick }}" aria-current="{{ er.current }}" style="{{ er.style }}"><span style="display: flex; justify-content: space-between; gap: 6px; align-items: center;"><span style="font: 800 13px Manrope, sans-serif; color: #14182B;">{{ er.n }}. {{ er.name }}</span><span style="{{ er.pillStyle }}">{{ er.pill }}</span></span><span style="font-size: 12px; color: #4A5168;">{{ er.when }} · to {{ er.to }}</span></button></sc-for></div>
+<div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 14px;">
+<div style="display: flex; flex-direction: column; gap: 2px;"><strong style="font: 800 15px Manrope, sans-serif; color: #081A53;">{{ emName }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ emGoal }}</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span id="cob-ea" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve email</span><button type="button" role="switch" aria-checked="{{ emApprovedAria }}" aria-labelledby="cob-ea" onClick="{{ toggleEmail }}" style="{{ emTrack }}"><span style="{{ emKnob }}"></span></button></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start;">
+<div style="flex: 1 1 320px; min-width: 0; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
+<sc-for list="{{ emFields }}" as="ef" hint-placeholder-count="6"><label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">{{ ef.label }}</span><textarea value="{{ ef.value }}" onInput="{{ ef.set }}" rows="{{ ef.rows }}" style="border-radius: 9px; border: 1px solid #C9CDD8; padding: 8px 10px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label></sc-for>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><button type="button" onClick="{{ saveEmail }}" disabled="{{ emClean }}" style="height: 36px; padding: 0 14px; border-radius: 9px; border: none; background: linear-gradient(160deg,#C2410C,#9A3412); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Save changes</button>
+<input value="{{ emNote }}" onInput="{{ setEmNote }}" aria-label="Note for the rewrite" placeholder="Note for a rewrite (optional)" style="flex: 1; min-width: 160px; height: 36px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" />
+<button type="button" onClick="{{ rewriteEmail }}" disabled="{{ busy }}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 700 13px Manrope, sans-serif; cursor: pointer;">Rewrite</button></div>
+</div>
+<div style="flex: 0 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; color: #4A5168;"><b>Subject:</b> {{ emSubject }} · <b>Preview text:</b> {{ emPre }}</span><iframe title="{{ emFrameTitle }}" srcdoc="{{ emDoc }}" style="width: 100%; height: 860px; border: 1px solid #E6E8EC; border-radius: 12px; background: #F3F4F7;"></iframe></div>
+</div>
+</div>
+</div>
+</sc-if>
+</section>
+</sc-if>
+
+<sc-if value="{{ tabLaunch }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Launch" style="display: flex; flex-direction: column; gap: 14px; max-width: 1000px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Download and launch yourself</h2>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">You get the landing pages (HTML), every email (HTML and plain text, with your email service’s merge tags), the strategy and a send schedule.</p>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Email service</span><select value="{{ espVal }}" onChange="{{ setEsp }}" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 8px; font: 600 13px 'Public Sans', sans-serif;"><sc-for list="{{ espOptions }}" as="eo" hint-placeholder-count="3"><option value="{{ eo.id }}">{{ eo.name }}</option></sc-for></select></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Where the landing page will live (for email buttons)</span><input value="{{ urlVal }}" onInput="{{ setUrl }}" placeholder="https://yoursite.com/offer" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Form address (where sign-ups go)</span><input value="{{ formVal }}" onInput="{{ setForm }}" placeholder="Your form service’s URL (optional)" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<sc-if value="{{ notAllApproved }}" hint-placeholder-val="{{ true }}"><p style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">{{ approvalNote }}</p></sc-if>
+<button type="button" onClick="{{ download }}" disabled="{{ cantDownload }}" style="align-self: flex-start; height: 40px; padding: 0 18px; border-radius: 10px; border: none; background: linear-gradient(160deg,#C2410C,#9A3412); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">Download all files (.zip)</button>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Build it in HubSpot</h2>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">We’ll create the landing pages, the sign-up form, every email and the workflow that sends them on schedule, directly in the client’s HubSpot account.</p>
+<p style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">Coming next: this needs the client’s HubSpot connected securely on our server. Until then, download the files and upload them to HubSpot.</p>
+<button type="button" disabled="true" style="align-self: flex-start; height: 40px; padding: 0 18px; border-radius: 10px; border: 1px solid #C9CDD8; background: #F1F2F5; color: #4A5168; font: 800 14px Manrope, sans-serif;">Build in HubSpot (not connected)</button>
+</div>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Send schedule</h3>
+<sc-for list="{{ schedule }}" as="sc" hint-placeholder-count="5"><div style="display: grid; grid-template-columns: 24px 1fr 180px 200px 110px; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF0F4; font-size: 13px; align-items: center;"><span style="font: 800 12px Manrope, sans-serif; color: #5A12D6;">{{ sc.n }}</span><strong style="font-family: Manrope, sans-serif;">{{ sc.subject }}</strong><span>{{ sc.when }}</span><span>To: {{ sc.to }}</span><span style="{{ sc.pillStyle }}">{{ sc.pill }}</span></div></sc-for></div>
+</section>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 13px; color: #B42318; background: #FEF3F2; border-radius: 10px; padding: 9px 12px;">{{ err }}</p></sc-if>
+</main>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+/*LOGIC*/
+</script>
+</body>
+</html>
