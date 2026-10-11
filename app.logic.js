@@ -8,13 +8,16 @@ const setPath = (o, path, v) => { const ks = path.split('.'); const root = JSON.
 const track = (on) => 'position:relative;width:40px;height:22px;border:0;padding:0;border-radius:999px;cursor:pointer;flex:none;background:' + (on ? '#1A7F43' : '#5E6475') + ';';
 const knob = (on) => 'position:absolute;top:3px;left:' + (on ? 21 : 3) + 'px;width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s;';
 const btnTab = (on) => 'display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:9px;font:800 13px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
-const EM_FIELDS = [['subject', 'Subject line', 1], ['preheader', 'Preview text', 1], ['eyebrow', 'Eyebrow', 1], ['headline', 'Headline', 1], ['body', 'Body', 7], ['bullets', 'Bullet points (one per line)', 4], ['cta', 'Button', 1], ['ps', 'P.S. (optional)', 2]];
+const EM_FIELDS = [['subject', 'Subject line', 1], ['preheader', 'Preview text', 1], ['eyebrow', 'Eyebrow', 1], ['headline', 'Headline', 1], ['body', 'Body', 7], ['bullets', 'Bullet points (one per line)', 4], ['cta', 'Button text (every email has one)', 1], ['ctaUrl', 'Button link (blank = the landing page)', 1], ['ps', 'P.S. (optional)', 2]];
+// Scroll a laptop or phone preview (the arrows to its right).
+const scrollDev = (dir) => (e) => { e.stopPropagation(); const r = e.currentTarget.closest('[data-dev]'), fr = r && r.querySelector('iframe'); try { const w = fr.contentWindow; w.scrollBy({ top: dir * Math.round(w.innerHeight * 0.75), behavior: 'smooth' }); } catch (x) {} };
 
 // Line icons for the left navigation (one per kind of offer), drawn in the CatalystOS violet.
 const ICON_PATHS = {
   whitepaper: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6M9 9h2"/>',
   guide: '<path d="M4 5a2 2 0 0 1 2-2h11v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/><path d="M17 19v2H6"/><path d="M8 7h6M8 11h5"/>',
   webinar: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M10.5 8.2v3.6L13.6 10z"/>',
+  replay: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M10 8.5v5l4.3-2.5z"/><path d="M7 21h10"/>',
   workshop: '<circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0M11.5 19a4.5 4.5 0 0 1 9 0"/>',
 };
 const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#5A12D6') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
@@ -22,7 +25,7 @@ const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 
 
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
-    form: { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '' },
+    form: { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '' },
     camps: [], busy: false, busyMsg: '', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
@@ -62,7 +65,7 @@ class Component extends DCLogic {
   plan = async () => {
     if (this.state.busy) return;
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     this.setState({ busy: true, err: '', busyMsg: camp ? 'We’re planning the strategy around “' + camp.name + '”…' : 'No campaign selected, so we’re choosing a timely direction…' });
     try {
       const strategy = await this.D.planOffer({ offer: base, campaign: camp });
@@ -124,36 +127,40 @@ class Component extends DCLogic {
 
   // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
   sampleDoc(kind, key) {
-    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, ck = JSON.stringify([kind, key, b.primary, b.logo, b.name, f.title, (b.services || []).length]);
+    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, ck = JSON.stringify([kind, key, b.primary, b.logo, b.name, f.title, f.date, f.time, f.where, f.speakers, f.videoUrl, (b.services || []).length]);
     if (this._sample[ck]) return this._sample[ck];
     const O = this.O.offerById(kind), noun = O.noun, title = f.title.trim() || (b.services && b.services[0] && b.services[0].title) || b.tagline || b.name;
     const items = (b.services || []).slice(0, 4).map((x) => ({ title: x.title, text: x.text || '' }));
     const learn = items.length >= 3 ? items : [{ title: '[Key takeaway one]', text: 'What readers will be able to do.' }, { title: '[Key takeaway two]', text: 'A practical idea they can use right away.' }, { title: '[Key takeaway three]', text: 'How to measure what works.' }];
     const C = {
-      hero: key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : 'Download now' }
+      hero: kind === 'replay' && key === 'offer' ? { eyebrow: 'Free webinar replay', headline: title, body: 'Missed it live? Watch the full session on demand.', cta: O.cta }
+        : key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : 'Download now' }
         : key === 'speakers' ? { eyebrow: O.label, headline: 'Meet your hosts', body: 'The people from ' + b.name + ' leading this ' + noun + '.', cta: O.cta }
         : key === 'details' ? { eyebrow: O.label, headline: 'Agenda and details', body: '[Date] · [Time] · [Where]', cta: O.cta }
         : { eyebrow: 'Free ' + O.label.toLowerCase(), headline: title, body: b.description ? String(b.description).split(/(?<=[.!?])\s/)[0] : 'A free ' + noun + ' from ' + b.name + '.', cta: O.cta },
       features: { eyebrow: 'What you’ll learn', heading: 'Inside the ' + noun, intro: '', items: learn },
       agenda: { eyebrow: 'Agenda', heading: 'What we’ll cover', intro: '', items: learn },
-      team: { eyebrow: O.event ? 'Your hosts' : 'Written by', heading: 'From the team at ' + b.name, intro: '' },
-      leadform: { eyebrow: O.label, heading: O.event ? 'Save your seat' : 'Get your free copy', body: 'Enter your details and we’ll send it right over.', cta: O.cta, fine: 'We respect your privacy. Unsubscribe anytime.' },
+      team: { eyebrow: O.event || O.replay ? 'Your speakers' : 'Written by', heading: O.event || O.replay ? 'Meet the speakers' : 'From the team at ' + b.name, intro: '', people: (f.speakers || []).slice() },
+      leadform: { eyebrow: O.label, heading: O.event ? 'Save your seat' : O.replay ? 'Get instant access' : 'Get your free copy', body: O.replay ? 'Enter your details and the replay opens right away.' : 'Enter your details and we’ll send it right over.', cta: O.cta, fine: 'We respect your privacy. Unsubscribe anytime.' },
       resources: { eyebrow: 'Keep going', heading: 'More from ' + b.name, intro: '', items: items.slice(0, 3).map((x) => ({ type: 'Resource', title: x.title, text: x.text })) },
       faq: { heading: 'Questions', items: [{ q: 'Is it free?', a: 'Yes.' }, { q: 'Will there be a recording?', a: '[Yes / No]' }] },
+      event: { label: f.where && /online|zoom|teams/i.test(f.where) ? 'Live online' : 'Save the date', date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), cta: O.cta },
+      replay: { eyebrow: 'On-demand webinar', heading: 'Watch the full session', body: 'See the whole presentation from ' + b.name + ', any time.', cta: O.cta, arrowLabel: 'Watch the replay' },
+      video: { eyebrow: 'Webinar replay', heading: title, body: f.date.trim() ? 'Originally presented ' + f.date.trim() + '.' : 'Thanks for signing up. Enjoy the session.', chapters: [], videoUrl: (f.videoUrl || '').trim() },
       cta: { eyebrow: 'Next step', heading: 'Talk with ' + b.name, body: 'Questions about putting this to work? We’re happy to help.', cta: 'Get in touch' },
     };
     const opts = this.P.designOptions('offer', b.industry), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
     const keys = O.pages, idx = Math.max(0, keys.indexOf(key));
     const site = { v: 2, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
-      pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.K.PAGES[k].sections.map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
+      pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.O.sectionsFor(kind, k, this.K.PAGES).map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
     return (this._sample[ck] = this.K.renderPage(site, idx, b, { bare: false }));
   }
   // Sample email copy for the start screen (Brand Command facts and the standard sequence only; the real emails are written later).
   sampleEmail(kind, e) {
     const O = this.O.offerById(kind), b = this.D.siteBrand(), f = this.state.form, title = f.title.trim() || ('[' + O.label + ' title]');
-    const invite = /^invite|^remind|^prep|^confirm/.test(e.key), after = /follow2|attended|missed|after/.test(e.key), deliver = /deliver/.test(e.key);
-    return { subject: invite ? e.name + ': ' + title : deliver ? 'Your ' + O.noun + ': ' + title : e.name, preheader: e.goal, eyebrow: O.label, headline: deliver ? 'Here’s your ' + O.noun : invite ? title : e.name,
-      body: e.goal + '\n\n[A few sentences in ' + b.name + '’s voice, written for the campaign.]', bullets: invite && /invite1|confirm/.test(e.key) ? ['[What they’ll learn]', '[Who it’s for]'] : [], cta: deliver ? 'Download now' : after ? 'Talk with us' : O.cta, ps: '' };
+    const invite = /^invite|^remind|^prep|^confirm/.test(e.key), deliver = /deliver/.test(e.key);
+    return { subject: invite ? e.name + ': ' + title : deliver ? 'Your ' + O.noun + ': ' + title : e.name, preheader: e.goal, eyebrow: O.label, headline: deliver ? (O.replay ? 'Here’s your replay' : 'Here’s your ' + O.noun) : invite ? title : e.name,
+      body: e.goal + '\n\n[A few sentences in ' + b.name + '’s voice, written for the campaign.]', bullets: invite && /invite1|confirm/.test(e.key) ? ['[What they’ll learn]', '[Who it’s for]'] : [], cta: this.O.ctaFor(kind, e.key, {}).text, ps: '' };
   }
   sampleEmailDoc(kind, e, i) {
     this._sampleEm = this._sampleEm || {}; const sd = (((this.state.form.seed || {})[kind] || {})[e.key] || {}).copy, b = this.D.siteBrand();
@@ -161,12 +168,13 @@ class Component extends DCLogic {
     if (!this._sampleEm[ck]) this._sampleEm[ck] = this.E.renderEmail({ ...this.sampleEmail(kind, e), ...(sd || {}) }, { brand: b, esp: 'hubspot', href: '#' });
     return this._sampleEm[ck];
   }
-  emailHtml(o, em) { return this.E.renderEmail(em.content || {}, { brand: this.D.siteBrand(), esp: o.esp, href: o.pageUrl || '#' }); }
+  ctaOf(o, em) { const d = this.O.ctaFor(o.kind, em.key, o); return { text: (em.content && em.content.cta) || d.text, url: (em.content && em.content.ctaUrl) || d.url || o.pageUrl || '#' }; }
+  emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
     const files = {}; o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.K.renderPage(o, i, b); });
-    o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText(e.content, { brand: b, esp: o.esp, href: o.pageUrl }); });
+    o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText({ ...e.content, cta: this.ctaOf(o, e).text }, { brand: b, esp: o.esp, href: this.ctaOf(o, e).url }); });
     const st = o.strategy || {};
     files['send-schedule.csv'] = 'Order,Email,Subject,When,To,Goal\n' + o.emails.map((e, i) => [i + 1, e.name, (e.content || {}).subject || '', e.when, e.to, e.goal].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
     files['strategy.md'] = '# ' + (st.title || o.name) + '\n\n' + O.label + (o.campaignName ? ' · Campaign: ' + o.campaignName : '') + '\n\n' + (st.summary || '') + '\n\n## Objective\n' + ((st.objective || {}).text || '') + '\n\nWhy: ' + ((st.objective || {}).why || '') + '\n\n## Audience\n' + ((st.audience || {}).text || '') + '\n\nPain: ' + ((st.audience || {}).pain || '') + '\n\nWhy: ' + ((st.audience || {}).why || '') + '\n\n## Angle\n' + ((st.angle || {}).text || '') + '\n\nWhy: ' + ((st.angle || {}).why || '') + '\n\n## Why this offer fits\n' + (st.fit || '') + '\n\n## Landing pages\n' + (st.pages || []).map((p) => '- ' + p.key + ': ' + p.job + ' (why: ' + p.why + ')').join('\n') + '\n\n## Emails\n' + (st.emails || []).map((e, i) => (i + 1) + '. ' + e.name + ' — ' + e.when + ', to ' + e.to + ': ' + e.goal + ' (why: ' + e.why + ')').join('\n') + '\n\n## Metrics\n' + (st.metrics || []).map((m) => '- ' + m.name + ': ' + m.target + ' — ' + m.why).join('\n') + '\n\n## Assumptions to confirm\n' + (st.assumptions || []).map((x) => '- ' + x).join('\n') + '\n\n## Risks\n' + (st.risks || []).map((x) => '- ' + x).join('\n') + '\n';
@@ -195,7 +203,14 @@ class Component extends DCLogic {
       kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
       dateVal: f.date, setDate: (e) => this.setForm({ date: e.target.value }), timeVal: f.time, setTime: (e) => this.setForm({ time: e.target.value }), whereVal: f.where, setWhere: (e) => this.setForm({ where: e.target.value }),
-      peopleLabel: K.event ? 'Speakers or hosts (optional)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
+      isReplay: !!K.replay, videoVal: f.videoUrl || '', setVideo: (e) => this.setForm({ videoUrl: e.target.value }),
+      hasSpeakerPick: !!(K.event || K.replay), noSpeakerPick: !(K.event || K.replay), noTeam: !(this.D.siteBrand().team || []).length,
+      speakerPick: (this.D.siteBrand().team || []).map((m) => { const on = (f.speakers || []).includes(m.name), im = m.cutout || m.photo; return { name: m.name, title: m.title || '', on, hasImg: !!im, noImg: !im, img: im || '', initials: String(m.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join(''),
+        toggle: () => this.setForm({ speakers: on ? f.speakers.filter((n) => n !== m.name) : (f.speakers || []).concat(m.name) }),
+        faceStyle: 'flex:none;width:34px;height:34px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font:800 12px Manrope,sans-serif;color:#3B1A8F;background:' + (m.cutout ? (m.headBg || '#FFFFFF') : '#F1EBFF') + ';',
+        style: 'display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') }; }),
+      scrollUp: scrollDev(-1), scrollDown: scrollDev(1),
+      peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
       plan: this.plan, planLabel: st.busy && !isOffer ? 'Planning…' : 'Plan the strategy', planStyle: 'height:44px;padding:0 20px;border:none;border-radius:11px;background:linear-gradient(160deg,#C2410C,#9A3412);color:#FFFFFF;font:800 14px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
       funnelTitle: 'How a ' + K.noun + ' offer comes together', howSteps: [
@@ -203,7 +218,7 @@ class Component extends DCLogic {
         { n: 2, title: 'Writing and design', text: 'We write every landing page and email through Brand Command, in the client’s voice and brand, around the campaign.' },
         { n: 3, title: 'Review', text: 'Edit any text, try other panel layouts, rewrite an email with a note, and approve each piece.' },
         { n: 4, title: 'Launch', text: 'Download all the web files and emails to launch yourself, or build it in HubSpot (coming next).' }],
-      funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
+      funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: K.replay ? ({ offer: 'Sign-up page: the replay video with an arrow to play it, what they’ll learn, the speakers, the form.', video: 'The replay itself: the video, its chapters and the next step.' }[k] || '') : { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
       funnelEmails: this.D.seqFor({ kind: f.kind, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
         open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
     if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
@@ -273,7 +288,7 @@ class Component extends DCLogic {
       emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
       saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }), rewriteEmail: this.rewriteEmail,
       emSubject: fv('subject'), emPre: fv('preheader'), emFrameTitle: 'Preview of the ' + (em ? em.name : '') + ' email',
-      emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: o.pageUrl || '#' }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
+      emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
 
     // Launch
     const left = (nP - apP) + (nE - apE);
