@@ -122,6 +122,32 @@ class Component extends DCLogic {
   };
   approval(on) { return on ? { by: this.D.userEmail(), at: Date.now() } : null; }
 
+  // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
+  sampleDoc(kind, key) {
+    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, ck = JSON.stringify([kind, key, b.primary, b.logo, b.name, f.title, (b.services || []).length]);
+    if (this._sample[ck]) return this._sample[ck];
+    const O = this.O.offerById(kind), noun = O.noun, title = f.title.trim() || (b.services && b.services[0] && b.services[0].title) || b.tagline || b.name;
+    const items = (b.services || []).slice(0, 4).map((x) => ({ title: x.title, text: x.text || '' }));
+    const learn = items.length >= 3 ? items : [{ title: '[Key takeaway one]', text: 'What readers will be able to do.' }, { title: '[Key takeaway two]', text: 'A practical idea they can use right away.' }, { title: '[Key takeaway three]', text: 'How to measure what works.' }];
+    const C = {
+      hero: key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : 'Download now' }
+        : key === 'speakers' ? { eyebrow: O.label, headline: 'Meet your hosts', body: 'The people from ' + b.name + ' leading this ' + noun + '.', cta: O.cta }
+        : key === 'details' ? { eyebrow: O.label, headline: 'Agenda and details', body: '[Date] · [Time] · [Where]', cta: O.cta }
+        : { eyebrow: 'Free ' + O.label.toLowerCase(), headline: title, body: b.description ? String(b.description).split(/(?<=[.!?])\s/)[0] : 'A free ' + noun + ' from ' + b.name + '.', cta: O.cta },
+      features: { eyebrow: 'What you’ll learn', heading: 'Inside the ' + noun, intro: '', items: learn },
+      agenda: { eyebrow: 'Agenda', heading: 'What we’ll cover', intro: '', items: learn },
+      team: { eyebrow: O.event ? 'Your hosts' : 'Written by', heading: 'From the team at ' + b.name, intro: '' },
+      leadform: { eyebrow: O.label, heading: O.event ? 'Save your seat' : 'Get your free copy', body: 'Enter your details and we’ll send it right over.', cta: O.cta, fine: 'We respect your privacy. Unsubscribe anytime.' },
+      resources: { eyebrow: 'Keep going', heading: 'More from ' + b.name, intro: '', items: items.slice(0, 3).map((x) => ({ type: 'Resource', title: x.title, text: x.text })) },
+      faq: { heading: 'Questions', items: [{ q: 'Is it free?', a: 'Yes.' }, { q: 'Will there be a recording?', a: '[Yes / No]' }] },
+      cta: { eyebrow: 'Next step', heading: 'Talk with ' + b.name, body: 'Questions about putting this to work? We’re happy to help.', cta: 'Get in touch' },
+    };
+    const opts = this.P.designOptions('offer', b.industry), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
+    const keys = O.pages, idx = Math.max(0, keys.indexOf(key));
+    const site = { v: 2, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
+      pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.K.PAGES[k].sections.map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
+    return (this._sample[ck] = this.K.renderPage(site, idx, b, { bare: false }));
+  }
   emailHtml(o, em) { return this.E.renderEmail(em.content || {}, { brand: this.D.siteBrand(), esp: o.esp, href: o.pageUrl || '#' }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   download = async () => {
@@ -164,8 +190,12 @@ class Component extends DCLogic {
         { n: 2, title: 'Writing and design', text: 'We write every landing page and email through Brand Command, in the client’s voice and brand, around the campaign.' },
         { n: 3, title: 'Review', text: 'Edit any text, try other panel layouts, rewrite an email with a note, and approve each piece.' },
         { n: 4, title: 'Launch', text: 'Download all the web files and emails to launch yourself, or build it in HubSpot (coming next).' }],
-      funnelPages: K.pages.map((k) => ({ title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
+      funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
       funnelEmails: K.emails.map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to })) };
+    if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+      Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk),
+        closeZoom: () => this.setState({ zoom: null }), stopZoom: (e) => e.stopPropagation(), zIsLaptop: zLap, zIsPhone: !zLap, zLapPressed: zLap ? 'true' : 'false', zPhPressed: zLap ? 'false' : 'true', zLapBtn: segB(zLap), zPhBtn: segB(!zLap), zoomLaptop: () => this.setState({ zDev: 'laptop' }), zoomPhone: () => this.setState({ zDev: 'phone' }) }); }
+    else vals.hasZoom = false;
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;

@@ -76,9 +76,10 @@
 <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="cob-how" style="display: flex; flex-direction: column; gap: 16px; max-width: 1100px;">
 <h2 id="cob-how" style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53;">{{ funnelTitle }}</h2>
-<div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 14px;">
+<div style="display: grid; grid-template-columns: 410px minmax(0, 1fr); gap: 14px; align-items: start;">
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Landing pages</h3>
-<sc-for list="{{ funnelPages }}" as="fp" hint-placeholder-count="2"><div style="display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid #EEF0F4;"><strong style="font: 700 13.5px Manrope, sans-serif;">{{ fp.title }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ fp.text }}</span></div></sc-for></div>
+<p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.45;">Sample design in {{ clientName }}’s brand. Click a page to see it larger.</p>
+<sc-for list="{{ funnelPages }}" as="fp" hint-placeholder-count="2"><button type="button" onClick="{{ fp.open }}" aria-label="{{ fp.label }}" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px 10px; border-radius: 12px; border: 1px solid #E6E8EC; background: #FAFAFC; cursor: zoom-in; text-align: left;" style-hover="border-color: #6818F8; background: #FBF9FF;"><span style="display: flex; flex-direction: column; align-items: center;"><span style="display: block; padding: 8px 8px 10px; background: #1C1F26; border-radius: 10px 10px 4px 4px;"><span style="position: relative; display: block; width: 320px; height: 200px; overflow: hidden; background: #FFFFFF; border-radius: 2px;"><iframe title="" aria-hidden="true" tabindex="-1" srcdoc="{{ fp.doc }}" style="position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform: scale(0.25); transform-origin: 0 0; pointer-events: none;"></iframe></span></span><span style="display: block; width: 370px; max-width: 100%; height: 9px; background: linear-gradient(180deg,#D7DAE1,#A9AEBA); border-radius: 0 0 9px 9px;"></span></span><span style="align-self: stretch; display: flex; flex-direction: column; gap: 2px; padding: 0 6px;"><strong style="font: 700 13.5px Manrope, sans-serif; color: #14182B;">{{ fp.title }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ fp.text }}</span></span></button></sc-for></div>
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Email sequence (starting point)</h3>
 <sc-for list="{{ funnelEmails }}" as="fe" hint-placeholder-count="6"><div style="display: grid; grid-template-columns: 26px 1fr 170px; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF0F4; align-items: start;"><span style="font: 800 12px Manrope, sans-serif; color: #5A12D6;">{{ fe.n }}</span><span style="display: flex; flex-direction: column; gap: 2px;"><strong style="font: 700 13.5px Manrope, sans-serif;">{{ fe.name }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ fe.goal }}</span></span><span style="font-size: 12px; color: #4A5168; line-height: 1.45;">{{ fe.when }}<br>To: {{ fe.to }}</span></div></sc-for></div>
 </div>
@@ -203,6 +204,12 @@
 </sc-if>
 </sc-if>
 
+<sc-if value="{{ hasZoom }}" hint-placeholder-val="{{ false }}"><div onClick="{{ closeZoom }}" style="position: fixed; inset: 0; z-index: 60; background: rgba(8,16,43,.6); display: flex; align-items: center; justify-content: center; padding: 20px;"><div role="dialog" aria-modal="true" aria-labelledby="cob-zoom-t" onClick="{{ stopZoom }}" style="background: #FFFFFF; border-radius: 16px; padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 14px; max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); overflow: auto; box-shadow: 0 30px 80px rgba(0,0,0,.35);">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;"><div style="display: flex; flex-direction: column; gap: 2px;"><h2 id="cob-zoom-t" style="margin: 0; font: 800 18px Manrope, sans-serif; color: #081A53;">{{ zoomTitle }}</h2><span style="font-size: 12.5px; color: #4A5168;">{{ zoomText }}</span></div><div style="display: flex; align-items: center; gap: 10px;"><div role="group" aria-label="Preview on" style="display: flex; gap: 4px;"><button type="button" onClick="{{ zoomLaptop }}" aria-pressed="{{ zLapPressed }}" style="{{ zLapBtn }}">Laptop</button><button type="button" onClick="{{ zoomPhone }}" aria-pressed="{{ zPhPressed }}" style="{{ zPhBtn }}">Phone</button></div><button type="button" onClick="{{ closeZoom }}" aria-label="Close preview" style="width: 36px; height: 36px; border-radius: 50%; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 18px Manrope, sans-serif; cursor: pointer;">×</button></div></div>
+<sc-if value="{{ zIsLaptop }}" hint-placeholder-val="{{ true }}"><div style="display: flex; flex-direction: column; align-items: center;"><div style="padding: 16px 16px 20px; background: #1C1F26; border-radius: 18px 18px 8px 8px;"><div style="position: relative; width: 960px; height: 600px; overflow: hidden; background: #FFFFFF; border-radius: 3px;"><iframe title="{{ zoomTitle }} sample" srcdoc="{{ zoomDoc }}" style="position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform: scale(0.75); transform-origin: 0 0;"></iframe></div></div><div style="width: 1080px; max-width: 100%; height: 16px; background: linear-gradient(180deg,#D7DAE1,#A9AEBA); border-radius: 0 0 16px 16px;"></div></div></sc-if>
+<sc-if value="{{ zIsPhone }}" hint-placeholder-val="{{ false }}"><div style="align-self: center; padding: 14px; background: #1C1F26; border-radius: 44px;"><div style="position: relative; width: 312px; height: 620px; overflow: hidden; background: #FFFFFF; border-radius: 30px;"><iframe title="{{ zoomTitle }} sample on a phone" srcdoc="{{ zoomDoc }}" style="position: absolute; top: 0; left: 0; width: 390px; height: 775px; border: 0; transform: scale(0.8); transform-origin: 0 0;"></iframe></div></div></sc-if>
+<span style="font-size: 12px; color: #4A5168; text-align: center;">Scroll inside the screen to see the whole page. The real pages are written for your campaign after the strategy.</span>
+</div></div></sc-if>
 <sc-if value="{{ hasErr }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin: 0; font-size: 13px; color: #B42318; background: #FEF3F2; border-radius: 10px; padding: 9px 12px;">{{ err }}</p></sc-if>
 </main>
 </div>
@@ -334,6 +341,32 @@ class Component extends DCLogic {
   };
   approval(on) { return on ? { by: this.D.userEmail(), at: Date.now() } : null; }
 
+  // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
+  sampleDoc(kind, key) {
+    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, ck = JSON.stringify([kind, key, b.primary, b.logo, b.name, f.title, (b.services || []).length]);
+    if (this._sample[ck]) return this._sample[ck];
+    const O = this.O.offerById(kind), noun = O.noun, title = f.title.trim() || (b.services && b.services[0] && b.services[0].title) || b.tagline || b.name;
+    const items = (b.services || []).slice(0, 4).map((x) => ({ title: x.title, text: x.text || '' }));
+    const learn = items.length >= 3 ? items : [{ title: '[Key takeaway one]', text: 'What readers will be able to do.' }, { title: '[Key takeaway two]', text: 'A practical idea they can use right away.' }, { title: '[Key takeaway three]', text: 'How to measure what works.' }];
+    const C = {
+      hero: key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : 'Download now' }
+        : key === 'speakers' ? { eyebrow: O.label, headline: 'Meet your hosts', body: 'The people from ' + b.name + ' leading this ' + noun + '.', cta: O.cta }
+        : key === 'details' ? { eyebrow: O.label, headline: 'Agenda and details', body: '[Date] · [Time] · [Where]', cta: O.cta }
+        : { eyebrow: 'Free ' + O.label.toLowerCase(), headline: title, body: b.description ? String(b.description).split(/(?<=[.!?])\s/)[0] : 'A free ' + noun + ' from ' + b.name + '.', cta: O.cta },
+      features: { eyebrow: 'What you’ll learn', heading: 'Inside the ' + noun, intro: '', items: learn },
+      agenda: { eyebrow: 'Agenda', heading: 'What we’ll cover', intro: '', items: learn },
+      team: { eyebrow: O.event ? 'Your hosts' : 'Written by', heading: 'From the team at ' + b.name, intro: '' },
+      leadform: { eyebrow: O.label, heading: O.event ? 'Save your seat' : 'Get your free copy', body: 'Enter your details and we’ll send it right over.', cta: O.cta, fine: 'We respect your privacy. Unsubscribe anytime.' },
+      resources: { eyebrow: 'Keep going', heading: 'More from ' + b.name, intro: '', items: items.slice(0, 3).map((x) => ({ type: 'Resource', title: x.title, text: x.text })) },
+      faq: { heading: 'Questions', items: [{ q: 'Is it free?', a: 'Yes.' }, { q: 'Will there be a recording?', a: '[Yes / No]' }] },
+      cta: { eyebrow: 'Next step', heading: 'Talk with ' + b.name, body: 'Questions about putting this to work? We’re happy to help.', cta: 'Get in touch' },
+    };
+    const opts = this.P.designOptions('offer', b.industry), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
+    const keys = O.pages, idx = Math.max(0, keys.indexOf(key));
+    const site = { v: 2, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
+      pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.K.PAGES[k].sections.map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
+    return (this._sample[ck] = this.K.renderPage(site, idx, b, { bare: false }));
+  }
   emailHtml(o, em) { return this.E.renderEmail(em.content || {}, { brand: this.D.siteBrand(), esp: o.esp, href: o.pageUrl || '#' }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   download = async () => {
@@ -376,8 +409,12 @@ class Component extends DCLogic {
         { n: 2, title: 'Writing and design', text: 'We write every landing page and email through Brand Command, in the client’s voice and brand, around the campaign.' },
         { n: 3, title: 'Review', text: 'Edit any text, try other panel layouts, rewrite an email with a note, and approve each piece.' },
         { n: 4, title: 'Launch', text: 'Download all the web files and emails to launch yourself, or build it in HubSpot (coming next).' }],
-      funnelPages: K.pages.map((k) => ({ title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
+      funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
       funnelEmails: K.emails.map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to })) };
+    if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+      Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk),
+        closeZoom: () => this.setState({ zoom: null }), stopZoom: (e) => e.stopPropagation(), zIsLaptop: zLap, zIsPhone: !zLap, zLapPressed: zLap ? 'true' : 'false', zPhPressed: zLap ? 'false' : 'true', zLapBtn: segB(zLap), zPhBtn: segB(!zLap), zoomLaptop: () => this.setState({ zDev: 'laptop' }), zoomPhone: () => this.setState({ zDev: 'phone' }) }); }
+    else vals.hasZoom = false;
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;
