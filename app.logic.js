@@ -62,7 +62,7 @@ class Component extends DCLogic {
   plan = async () => {
     if (this.state.busy) return;
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), campaignId: campId, campaignName: camp ? camp.name : '', esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     this.setState({ busy: true, err: '', busyMsg: camp ? 'We’re planning the strategy around “' + camp.name + '”…' : 'No campaign selected, so we’re choosing a timely direction…' });
     try {
       const strategy = await this.D.planOffer({ offer: base, campaign: camp });
@@ -148,6 +148,19 @@ class Component extends DCLogic {
       pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.K.PAGES[k].sections.map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
     return (this._sample[ck] = this.K.renderPage(site, idx, b, { bare: false }));
   }
+  // Sample email copy for the start screen (Brand Command facts and the standard sequence only; the real emails are written later).
+  sampleEmail(kind, e) {
+    const O = this.O.offerById(kind), b = this.D.siteBrand(), f = this.state.form, title = f.title.trim() || ('[' + O.label + ' title]');
+    const invite = /^invite|^remind|^prep|^confirm/.test(e.key), after = /follow2|attended|missed|after/.test(e.key), deliver = /deliver/.test(e.key);
+    return { subject: invite ? e.name + ': ' + title : deliver ? 'Your ' + O.noun + ': ' + title : e.name, preheader: e.goal, eyebrow: O.label, headline: deliver ? 'Here’s your ' + O.noun : invite ? title : e.name,
+      body: e.goal + '\n\n[A few sentences in ' + b.name + '’s voice, written for the campaign.]', bullets: invite && /invite1|confirm/.test(e.key) ? ['[What they’ll learn]', '[Who it’s for]'] : [], cta: deliver ? 'Download now' : after ? 'Talk with us' : O.cta, ps: '' };
+  }
+  sampleEmailDoc(kind, e, i) {
+    this._sampleEm = this._sampleEm || {}; const sd = (((this.state.form.seed || {})[kind] || {})[e.key] || {}).copy, b = this.D.siteBrand();
+    const ck = JSON.stringify([kind, e.key, e.name, e.goal, sd, b.primary, b.logo, this.state.form.title]);
+    if (!this._sampleEm[ck]) this._sampleEm[ck] = this.E.renderEmail({ ...this.sampleEmail(kind, e), ...(sd || {}) }, { brand: b, esp: 'hubspot', href: '#' });
+    return this._sampleEm[ck];
+  }
   emailHtml(o, em) { return this.E.renderEmail(em.content || {}, { brand: this.D.siteBrand(), esp: o.esp, href: o.pageUrl || '#' }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   download = async () => {
@@ -191,11 +204,23 @@ class Component extends DCLogic {
         { n: 3, title: 'Review', text: 'Edit any text, try other panel layouts, rewrite an email with a note, and approve each piece.' },
         { n: 4, title: 'Launch', text: 'Download all the web files and emails to launch yourself, or build it in HubSpot (coming next).' }],
       funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
-      funnelEmails: K.emails.map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to })) };
+      funnelEmails: this.D.seqFor({ kind: f.kind, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
+        open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
     if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
       Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk),
         closeZoom: () => this.setState({ zoom: null }), stopZoom: (e) => e.stopPropagation(), zIsLaptop: zLap, zIsPhone: !zLap, zLapPressed: zLap ? 'true' : 'false', zPhPressed: zLap ? 'false' : 'true', zLapBtn: segB(zLap), zPhBtn: segB(!zLap), zoomLaptop: () => this.setState({ zDev: 'laptop' }), zoomPhone: () => this.setState({ zDev: 'phone' }) }); }
     else vals.hasZoom = false;
+    const se = st.seqEdit;
+    if (se) { const upd = (part, k) => (ev) => { const v = ev.target.value; this.setState((s2) => ({ seqEdit: { ...s2.seqEdit, [part]: { ...s2.seqEdit[part], [k]: v } } })); };
+      const cp = se.copy || {};
+      Object.assign(vals, { hasSeqEdit: true, seqTitle: 'Email ' + (se.i + 1) + ': ' + (se.plan.name || ''), closeSeq: () => this.setState({ seqEdit: null }), stopZoom: (e) => e.stopPropagation(),
+        seqPlan: [['name', 'Email name'], ['when', 'When it goes out'], ['to', 'Who gets it'], ['goal', 'Its job']].map(([k, label]) => ({ label, value: se.plan[k] || '', set: upd('plan', k) })),
+        seqFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(Math.min(rows, 6)), value: k === 'bullets' ? (Array.isArray(cp.bullets) ? cp.bullets.join('\n') : cp.bullets || '') : cp[k] || '', set: upd('copy', k) })),
+        seqDoc: this.E.renderEmail({ ...cp, bullets: Array.isArray(cp.bullets) ? cp.bullets : String(cp.bullets || '').split('\n').filter(Boolean) }, { brand: this.D.siteBrand(), esp: 'hubspot', href: '#' }),
+        saveSeq: () => { const copy = { ...cp, bullets: Array.isArray(cp.bullets) ? cp.bullets : String(cp.bullets || '').split('\n').map((x) => x.trim()).filter(Boolean) };
+          this.setState((s2) => { const all = { ...(s2.form.seed || {}) }; all[se.kind] = { ...(all[se.kind] || {}), [se.key]: { ...se.plan, copy } }; return { form: { ...s2.form, seed: all }, seqEdit: null }; }); },
+        resetSeq: () => this.setState((s2) => { const all = { ...(s2.form.seed || {}) }; const k2 = { ...(all[se.kind] || {}) }; delete k2[se.key]; all[se.kind] = k2; return { form: { ...s2.form, seed: all }, seqEdit: null }; }) }); }
+    else vals.hasSeqEdit = false;
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;
