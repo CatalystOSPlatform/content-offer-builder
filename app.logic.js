@@ -34,6 +34,15 @@ class Component extends DCLogic {
     window.addEventListener('message', this._onMsg);
   }
   componentWillUnmount() { window.removeEventListener('message', this._onMsg); }
+  // The Saved Files bar under the client picker; follows the client when it changes.
+  componentDidUpdate() { this.mountSaved(); }
+  mountSaved() {
+    const host = document.querySelector('[data-cos-saved-mount]'); if (!host || !window.CosSavedBar || !this.D || !this.D.savedBarInfo) return;
+    const { clientId, orgId } = this.D.savedBarInfo(); if (!clientId) return;
+    if (this._sfHost === host && this._sfCid === clientId && host.querySelector('[data-cos-savedbar]')) return;
+    this._sfHost = host; this._sfCid = clientId;
+    try { window.CosSavedBar.mount({ app: 'contentoffers', mount: host, clientId, orgId }); } catch (e) { console.warn('Saved files bar', e); }
+  }
 
   async start() {
     try {

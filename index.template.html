@@ -9,6 +9,7 @@
 (function () { try { var h = location.hostname; if (/vercel\.app$/i.test(h) || /catalyst/i.test(h) || h === 'localhost') document.write('<script src="https://pilot-dash-ten.vercel.app/cos-app-auth.js" data-require data-no-button data-no-back><\/script>'); } catch (e) {} })();
 </script>
 <script src="./support.js"></script>
+<script src="https://pilot-dash-ten.vercel.app/saved-bar.js"></script>
 </head>
 <body>
 <x-dc>
@@ -16,7 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}</style>
 </helmet>
-<div style="min-height: 100vh; font-family: 'Public Sans', sans-serif; color: #14182B; display: flex; flex-direction: column; background-color: #FAF9FD; background-image: radial-gradient(#D6D2E4 1px, transparent 1px); background-size: 12px 12px;">
+<div style="min-height: 100vh; font-family: 'Public Sans', sans-serif; color: #14182B; display: flex; flex-direction: column; background-color: #FAF9FD;">
 <sc-if value="{{ showShell }}" hint-placeholder-val="{{ true }}">
 <dc-import name="Shell" app-name="Content Offer Builder" agency="{{ agency }}" client-name="{{ clientName }}" client-id="{{ clientId }}" email="{{ email }}" back-href="{{ backHref }}" clients="{{ clients }}" on-pick-client="{{ pickClient }}" on-sign-out="{{ signOut }}"></dc-import>
 </sc-if>
