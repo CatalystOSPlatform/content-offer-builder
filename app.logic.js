@@ -23,9 +23,10 @@ const ICON_PATHS = {
 const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#5A12D6') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
 const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:10px;display:flex;align-items:center;justify-content:center;' + (on ? 'background:#6818F8;' : 'background:#F1EBFF;');
 
+const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
-    form: { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial' },
+    form: { ...FORM0 },
     camps: [], busy: false, busyMsg: '', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
@@ -58,7 +59,17 @@ class Component extends DCLogic {
     const want = new URLSearchParams(location.search).get('offer'), has = want && offers.find((o) => o.id === want);
     this.setState({ boot: 'ready', info, offers, camps, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
   }
-  pickClient = async (id) => { this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…' }); const info = await this.D.switchClient(id); if (info) this.useInfo({ ...this.state.info, ...info }); };
+  // Switching clients happens right here: the new client's offers, campaigns and brand load, and nothing of the old client stays on screen.
+  pickClient = async (id) => {
+    const st = this.state, prev = (st.info || {}).clientId;
+    if (!id || id === prev) return;
+    if (st.busy) return this.setState({ err: 'Please wait until the current step finishes, then switch clients.' });
+    this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
+    let info = null; try { info = await this.D.switchClient(id); } catch (e) { console.error(e); }
+    if (!info) { const back = prev ? await this.D.switchClient(prev).catch(() => null) : null; if (back) await this.useInfo({ ...st.info, ...back }); return this.setState({ boot: back ? 'ready' : 'error', err: 'That client could not be opened. Try again from the dashboard.', bootMsg: 'That client could not be opened. Try again from the dashboard.' }); }
+    try { const u = new URL(location.href); u.searchParams.delete('offer'); u.searchParams.set('client', info.clientId || id); if (this.D.orgId()) u.searchParams.set('org', this.D.orgId()); history.replaceState(null, '', u.href); } catch (e) {}
+    await this.useInfo({ ...st.info, ...info });
+  };
 
   offer() { return this.state.offers.find((o) => o.id === this.state.offerId) || null; }
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
@@ -233,7 +244,7 @@ class Component extends DCLogic {
       isWebinar: f.kind === 'webinar', tplCards: f.kind === 'webinar' ? this.W.WEBINAR_TEMPLATES.map((t) => ({ name: t.name, desc: t.desc, on: (f.tpl || 'editorial') === t.id, pressed: (f.tpl || 'editorial') === t.id ? 'true' : 'false', doc: this.sampleDoc('webinar', 'offer', t.id), pick: () => this.setForm({ tpl: t.id }), zoom: () => this.setState({ zoom: { kind: 'webinar', key: 'offer', tpl: t.id } }), label: 'Use the ' + t.name + ' template', zoomLabel: 'See the ' + t.name + ' template larger',
         style: 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px 10px;border-radius:12px;cursor:pointer;text-align:left;' + ((f.tpl || 'editorial') === t.id ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FAFAFC;border:1px solid #E6E8EC;') })) : [],
       peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
-      plan: this.plan, planLabel: st.busy && !isOffer ? 'Planning…' : 'Plan the strategy', planStyle: 'height:44px;padding:0 20px;border:none;border-radius:11px;background:linear-gradient(160deg,#C2410C,#9A3412);color:#FFFFFF;font:800 14px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
+      plan: this.plan, planLabel: st.busy && !isOffer ? 'Planning…' : 'Plan the strategy', planStyle: 'height:44px;padding:0 20px;border:none;border-radius:11px;background:linear-gradient(160deg,#C94310,#A8360A);color:#FFFFFF;font:800 14px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
       funnelTitle: 'How a ' + K.noun + ' offer comes together', howSteps: [
         { n: 1, title: 'Strategy', text: 'We plan the objective, audience, angle, pages and emails, each with the reason and where it came from. You review it and ask for changes.' },
@@ -271,7 +282,7 @@ class Component extends DCLogic {
     Object.assign(vals, { stratPill: o.strategyApproved ? PILL.approved[0] : PILL.review[0], stratPillStyle: pill(o.strategyApproved ? 'approved' : 'review').replace('margin-left:8px;', ''), stratBy: o.strategyApproved ? 'Approved by ' + (o.strategyApproved.by || 'you') + ' · ' + new Date(o.strategyApproved.at).toLocaleString('en-US') : 'Planned ' + (s.at ? new Date(s.at).toLocaleString('en-US') : ''),
       stratApprovedAria: o.strategyApproved ? 'true' : 'false', stratTrack: track(!!o.strategyApproved), stratKnob: knob(!!o.strategyApproved),
       toggleStrat: () => this.update((x) => { x.strategyApproved = this.approval(!x.strategyApproved); if (x.strategyApproved) this.D.recordApproval('strategy', 'Content offer strategy · ' + (x.name || ''), x.strategy); return x; }),
-      buildAll: this.buildAll, buildLabel: st.busy ? 'Working…' : nP || nE ? 'Rebuild pages and emails' : 'Build pages and emails', buildStyle: 'height:38px;padding:0 16px;border:none;border-radius:10px;background:linear-gradient(160deg,#C2410C,#9A3412);color:#FFFFFF;font:800 13px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
+      buildAll: this.buildAll, buildLabel: st.busy ? 'Working…' : nP || nE ? 'Rebuild pages and emails' : 'Build pages and emails', buildStyle: 'height:38px;padding:0 16px;border:none;border-radius:10px;background:linear-gradient(160deg,#C94310,#A8360A);color:#FFFFFF;font:800 13px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
       sTitle: s.title || o.name, sSummary: s.summary || '', hasTitleOptions: !!(s.titleOptions || []).length, titleOptions: (s.titleOptions || []).map((t) => ({ label: t, pick: () => this.update((x) => { const old = x.strategy.title; x.strategy.title = t; x.strategy.titleOptions = x.strategy.titleOptions.filter((y) => y !== t).concat(old ? [old] : []); x.name = t; x.strategyApproved = null; return x; }) })),
       decisions: [D('Objective', s.objective), D('Audience', s.audience, s.audience && s.audience.pain ? 'Their pain: “' + s.audience.pain + '”' : ''), D('Angle', s.angle)],
       kindNoun: O.offerById(o.kind).noun, sFit: s.fit || '', promise: (s.promise || []).map((t) => ({ text: t })),
