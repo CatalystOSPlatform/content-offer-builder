@@ -30,7 +30,7 @@ class Component extends DCLogic {
     camps: [], busy: false, busyMsg: '', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start();
+    this.start(); this.sfRegister(0);
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1); };
     window.addEventListener('message', this._onMsg);
   }
@@ -48,6 +48,7 @@ class Component extends DCLogic {
   async start() {
     try {
       this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js');
+      if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
       if (info.mode === 'no-client') return this.setState({ boot: 'no-client', bootMsg: 'Choose a client and turn on Brand Command access to start. Reload the page to choose again.' });
@@ -76,7 +77,68 @@ class Component extends DCLogic {
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   async persist(o) {
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
-    try { const s2 = await this.D.saveOffer(o); this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+    try { const s2 = await this.D.saveOffer(o); this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); this.thumbLater(s2); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+  }
+  // Saved Files thumbnail: the offer's first landing page, drawn a few seconds after the last save (again only when it changed).
+  thumbLater(o) {
+    if (!o || !o.id || !this.D.indexThumb) return; const cid = (this.state.info || {}).clientId;
+    this._shotT = this._shotT || {}; clearTimeout(this._shotT[o.id]);
+    this._shotT[o.id] = setTimeout(() => this.shotOffer(o).then((thumb) => { const sent = this._shotSent || (this._shotSent = {}); if (thumb && thumb !== sent[o.id] && (this.state.info || {}).clientId === cid) { sent[o.id] = thumb; this.D.indexThumb(o, thumb, cid); } }).catch(() => {}), 4000);
+  }
+  async shotOffer(o) {
+    let fr = null;
+    try {
+      const pg0 = o && o.pages && o.pages[0]; if (!pg0 || !(pg0.sections || []).length || !this.K || !this.D) return '';
+      const key = JSON.stringify([pg0, o.design, o.tpl, o.kind, o.name]); this._shots = this._shots || {};
+      const had = this._shots[o.id]; if (had && had.key === key) return had.url;
+      const still = { ...o, design: { ...(o.design || {}), motion: 0 }, pages: o.pages.map((p, i) => (i ? p : { ...p, sections: (p.sections || []).map((x) => ({ ...x, motion: 0 })) })) };
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.title = 'Thumbnail';
+      fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:1280px;height:800px;border:0;pointer-events:none;';
+      const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.renderOfferPage(still, 0, this.pageBrand(still), { preview: true }); document.body.appendChild(fr);
+      await Promise.race([loaded, wait(8000)]);
+      const w = fr.contentWindow, d = fr.contentDocument; if (!w || !d || !d.body) return '';
+      if (!w.htmlToImage) await Promise.race([new Promise((r) => { const sc = d.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js'; sc.onload = r; sc.onerror = r; (d.head || d.body).appendChild(sc); }), wait(8000)]);
+      const H = w.htmlToImage; if (!H) return '';
+      try { await Promise.race([d.fonts && d.fonts.ready, wait(2500)]); } catch (e) {}
+      await wait(300);
+      const opt = { width: 1280, height: 800, pixelRatio: 0.4, quality: 0.8, backgroundColor: '#ffffff', cacheBust: true };
+      let url = ''; try { url = await Promise.race([H.toJpeg(d.body, opt), wait(12000).then(() => '')]); } catch (e) { try { url = await Promise.race([H.toJpeg(d.body, { ...opt, filter: (n) => n.tagName !== 'IMG' }), wait(12000).then(() => '')]); } catch (e2) {} }
+      if (!/^data:image\//.test(url || '')) return '';
+      this._shots[o.id] = { key, url }; return url;
+    } catch (e) { return ''; } finally { if (fr) fr.remove(); }
+  }
+  // Deletes an offer (its saved copy and Saved Files entry); the builder goes back to "new" if it was open.
+  async deleteOfferNow(id) {
+    try { await this.D.deleteOffer(id); } catch (e) {}
+    this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== id), ...(st.offerId === id ? { offerId: null, view: 'new' } : {}), delAsk: false }));
+  }
+  // Saved Files window buttons for this app's offers (any offer of the open client — never another client's).
+  sfRegister(n) { if (window.CosSavedBar && window.CosSavedBar.setActions) { window.CosSavedBar.setActions(this.sfActions()); return; } if (n < 80) setTimeout(() => this.sfRegister(n + 1), 250); }
+  async sfOffer(ref, rec) {
+    for (let i = 0; i < 120 && this.state.boot !== 'ready'; i++) await new Promise((r) => setTimeout(r, 250));
+    const cid = (this.state.info || {}).clientId; if (this.state.boot !== 'ready' || !cid || (rec && rec._cid && rec._cid !== cid)) return null;
+    let o = this.state.offers.find((x) => x.id === ref);
+    if (!o) { try { o = (await this.D.listOffers()).find((x) => x.id === ref); } catch (e) {} if (o) this.setState((st) => ({ offers: [o, ...st.offers.filter((x) => x.id !== o.id)] })); }
+    return o ? JSON.parse(JSON.stringify(o)) : null;
+  }
+  sfActions() {
+    const self = this;
+    return {
+      // The whole offer: the strategy and every landing page and email (each approval recorded in Brand Command, as the switches here do).
+      async approve(ref, on, rec) { const o = await self.sfOffer(ref, rec); if (!o) return; const a = self.approval(!!on);
+        o.strategyApproved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
+        await self.persist(o);
+        if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
+      // An offer is for one Brand Command campaign: the one newly picked (or none).
+      async campaigns(ref, ids, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
+        const ok = (ids || []).filter(Boolean); const id = ok.find((x) => x !== o.campaignId) || (ok.indexOf(o.campaignId) >= 0 ? o.campaignId : null); const c = id ? self.campaign(id) : null;
+        o.campaignId = id || null; o.campaignName = c ? c.name : (id ? o.campaignName || '' : ''); await self.persist(o); },
+      async duplicate(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
+        const copy = { ...o, id: 'o' + Date.now(), name: (o.name || o.title || 'Content offer') + ' copy', strategyApproved: null, pages: (o.pages || []).map((p) => ({ ...p, approved: null })), emails: (o.emails || []).map((e) => ({ ...e, approved: null })), createdAt: Date.now() };
+        await self.persist(copy); return copy.id; },
+      async remove(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (o) await self.deleteOfferNow(ref); },
+    };
   }
   update(fn) { const o = this.offer(); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
   setForm(patch) { this.setState((st) => ({ form: { ...st.form, ...patch } })); }
@@ -215,8 +277,7 @@ class Component extends DCLogic {
   };
   removeOffer = async () => {
     if (!this.state.delAsk) return this.setState({ delAsk: true });
-    const o = this.offer(); if (!o) return; try { await this.D.deleteOffer(o.id); } catch (e) {}
-    this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id), offerId: null, view: 'new', delAsk: false }));
+    const o = this.offer(); if (!o) return; await this.deleteOfferNow(o.id);
   };
 
   renderVals() {
