@@ -16,7 +16,10 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}</style>
+<style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}
+/* CatalystOS side panels (same in every app): 380px, white, stays in view below the headers and scrolls on its own. */
+@media (min-width: 900px) { .cos-sidepanel { position: sticky !important; top: 0; height: 100vh; max-height: 100vh; overflow-y: auto; align-self: start; box-sizing: border-box; } }
+</style>
 </helmet>
 <div style="min-height: 100vh; font-family: 'Public Sans', sans-serif; color: #14182B; display: flex; flex-direction: column; background-color: #FAF9FD; background-image: radial-gradient(#D6D2E4 1px, transparent 1px); background-size: 12px 12px;">
 <sc-if value="{{ showShell }}" hint-placeholder-val="{{ true }}">
@@ -34,9 +37,9 @@
 </sc-if>
 
 <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
-<div style="flex: 1; display: grid; grid-template-columns: 350px minmax(0, 1fr); min-height: 0;">
+<div style="flex: 1; display: grid; grid-template-columns: 380px minmax(0, 1fr); min-height: 0;">
 
-<aside aria-label="Content offers" style="background: #FFFFFF; border-right: 1px solid #E6E8EC; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;">
+<aside aria-label="Content offers" class="cos-sidepanel" style="background: #FFFFFF; border-right: 1px solid #E6E8EC; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;">
 <button type="button" onClick="{{ newOffer }}" style="height: 42px; border: none; border-radius: 10px; background: linear-gradient(135deg,#1921FE,#6818F8); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">New content offer +</button>
 <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="cob-new" style="display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #DCCCFE; border-radius: 14px; background: #FBF9FF;">
@@ -489,7 +492,7 @@ class Component extends DCLogic {
   cosCreateMount() {
     const go = () => {
       if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
-      window.CatalystCreate.mount({
+      window.CatalystCreate.mount({ designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
         enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit,
         noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
         context: () => {
