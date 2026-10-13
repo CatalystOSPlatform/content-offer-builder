@@ -10,6 +10,7 @@
 </script>
 <script src="./support.js"></script>
 <script src="https://catalystos-dashboard-staging.vercel.app/saved-bar.js"></script>
+<script src="https://catalystos-dashboard-staging.vercel.app/catalyst-create.js"></script>
 </head>
 <body>
 <x-dc>
@@ -39,7 +40,7 @@
 <button type="button" onClick="{{ newOffer }}" style="height: 42px; border: none; border-radius: 10px; background: linear-gradient(135deg,#1921FE,#6818F8); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">New content offer +</button>
 <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="cob-new" style="display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #DCCCFE; border-radius: 14px; background: #FBF9FF;">
-<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer. We plan the strategy first; once you’re happy with it, we write and design the landing pages and the email sequence.</p></div>
+<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer, add anything we should know, then click <b>Let CatalystOS create this</b>.</p></div>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Campaign</span>
 <select value="{{ campVal }}" onChange="{{ setCamp }}" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF;"><option value="none">No campaign (we choose a timely direction)</option><sc-for list="{{ campOptions }}" as="co" hint-placeholder-count="2"><option value="{{ co.id }}">{{ co.label }}</option></sc-for></select></label>
 <sc-if value="{{ noCamps }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 12px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 7px 10px; line-height: 1.45;">This client has no campaigns in Brand Command yet. Add one there, or go ahead without a campaign.</p></sc-if>
@@ -64,10 +65,6 @@
 <sc-for list="{{ speakerPick }}" as="sk" hint-placeholder-count="2"><label style="{{ sk.style }}"><input type="checkbox" checked="{{ sk.on }}" onChange="{{ sk.toggle }}" style="accent-color: #6818F8; width: 16px; height: 16px; flex: none;" /><span style="{{ sk.faceStyle }}"><sc-if value="{{ sk.hasImg }}" hint-placeholder-val="{{ false }}"><img src="{{ sk.img }}" alt="" style="width: 100%; height: 100%; object-fit: cover;"></sc-if><sc-if value="{{ sk.noImg }}" hint-placeholder-val="{{ true }}">{{ sk.initials }}</sc-if></span><span style="display: flex; flex-direction: column; min-width: 0;"><span style="font: 700 13px Manrope, sans-serif; color: #14182B;">{{ sk.name }}</span><span style="font-size: 12px; color: #4A5168;">{{ sk.title }}</span></span></label></sc-for>
 </fieldset></sc-if>
 <sc-if value="{{ noSpeakerPick }}" hint-placeholder-val="{{ true }}"><label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ peopleLabel }}</span><input value="{{ peopleVal }}" onInput="{{ setPeople }}" placeholder="From your Brand Command team" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 12px; font: 500 13px 'Public Sans', sans-serif;" /></label></sc-if>
-<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-<button type="button" onClick="{{ plan }}" disabled="{{ busy }}" style="{{ planStyle }}">{{ planLabel }}</button>
-<span role="status" style="font-size: 13px; color: #3B1A8F;">{{ busyMsg }}</span>
-</div>
 </section>
 </sc-if>
 <span class="cob-lbl" style="margin-top: 6px; color: #59627A;">{{ offersLabel }}</span>
@@ -104,7 +101,6 @@
 <button type="button" onClick="{{ removeOffer }}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid rgba(180,35,24,0.35); background: #FFFFFF; color: #B42318; font: 700 13px Manrope, sans-serif; cursor: pointer;">{{ removeLabel }}</button>
 </div>
 </div>
-<sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 13px; color: #3B1A8F; background: #F1EBFF; border-radius: 10px; padding: 9px 12px; display: flex; align-items: center; gap: 10px;"><span style="width: 16px; height: 16px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span>{{ busyMsg }}</p></sc-if>
 <div role="tablist" aria-label="Offer sections" style="display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #E6E8EC; padding-bottom: 8px;">
 <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{ tb.selected }}" onClick="{{ tb.pick }}" style="{{ tb.style }}">{{ tb.label }}<span style="{{ tb.badgeStyle }}">{{ tb.badge }}</span></button></sc-for>
 </div>
@@ -113,8 +109,7 @@
 <section aria-label="Strategy" style="display: flex; flex-direction: column; gap: 14px; max-width: 1150px;">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
 <div style="display: flex; align-items: center; gap: 10px;"><span style="{{ stratPillStyle }}">{{ stratPill }}</span><span style="font-size: 12.5px; color: #4A5168;">{{ stratBy }}</span></div>
-<div style="display: flex; align-items: center; gap: 12px;"><span id="cob-sa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve strategy</span><button type="button" role="switch" aria-checked="{{ stratApprovedAria }}" aria-labelledby="cob-sa" onClick="{{ toggleStrat }}" style="{{ stratTrack }}"><span style="{{ stratKnob }}"></span></button>
-<button type="button" onClick="{{ buildAll }}" disabled="{{ busy }}" style="{{ buildStyle }}">{{ buildLabel }}</button></div>
+<div style="display: flex; align-items: center; gap: 12px;"><span id="cob-sa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve strategy</span><button type="button" role="switch" aria-checked="{{ stratApprovedAria }}" aria-labelledby="cob-sa" onClick="{{ toggleStrat }}" style="{{ stratTrack }}"><span style="{{ stratKnob }}"></span></button></div>
 </div>
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px;">
 <span class="cob-lbl">The offer</span><h2 style="margin: 0; font: 800 22px Manrope, sans-serif; color: #081A53;">{{ sTitle }}</h2>
@@ -134,15 +129,15 @@
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Assumptions to confirm</h3><ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #2A3045;"><sc-for list="{{ assumptions }}" as="as" hint-placeholder-count="2"><li>{{ as.text }}</li></sc-for></ul><h3 style="margin: 8px 0 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Risks and how we handle them</h3><ul style="margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: #2A3045;"><sc-for list="{{ risks }}" as="rk" hint-placeholder-count="2"><li>{{ rk.text }}</li></sc-for></ul></div>
 </div>
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Ask for changes</span><textarea value="{{ noteVal }}" onInput="{{ setNote }}" rows="3" placeholder="e.g. Aim at RIA founders under $500M, drop the last-chance email, lead with compliance" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label>
-<button type="button" onClick="{{ replan }}" disabled="{{ busy }}" style="align-self: flex-start; height: 38px; padding: 0 16px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer;">Revise the strategy</button>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Changes you’d like (optional)</span><textarea value="{{ noteVal }}" onInput="{{ setNote }}" rows="3" aria-describedby="cob-note-h" placeholder="e.g. Aim at RIA founders under $500M, drop the last-chance email, lead with compliance" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label>
+<span id="cob-note-h" style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">We use these the next time you click Let CatalystOS create this.</span>
 </div>
 </section>
 </sc-if>
 
 <sc-if value="{{ tabPages }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Landing pages" style="display: flex; flex-direction: column; gap: 12px;">
-<sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">The landing pages are written after the strategy. Go to Strategy and click Build.</p></sc-if>
+<sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No landing pages yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>
 <sc-if value="{{ hasPages }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;">
 <div role="group" aria-label="Pages" style="display: flex; flex-wrap: wrap; gap: 6px;"><sc-for list="{{ pageTabs }}" as="pt" hint-placeholder-count="2"><button type="button" onClick="{{ pt.pick }}" aria-current="{{ pt.current }}" style="{{ pt.style }}">{{ pt.title }}<span style="{{ pt.pillStyle }}">{{ pt.pill }}</span></button></sc-for></div>
@@ -166,7 +161,7 @@
 
 <sc-if value="{{ tabEmails }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Emails" style="display: flex; flex-direction: column; gap: 12px;">
-<sc-if value="{{ noEmails }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">The emails are written after the strategy. Go to Strategy and click Build.</p></sc-if>
+<sc-if value="{{ noEmails }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No emails yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>
 <sc-if value="{{ hasEmails }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-direction: column; gap: 16px;">
 <div role="group" aria-label="Emails in the sequence" style="display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px;"><sc-for list="{{ emailRows }}" as="er" hint-placeholder-count="6"><button type="button" onClick="{{ er.pick }}" aria-current="{{ er.current }}" aria-label="{{ er.label }}" style="{{ er.style }}"><span style="position: relative; display: block; width: 180px; height: 240px; overflow: hidden; border-radius: 8px; background: #F3F4F7;"><sc-if value="{{ er.hasDoc }}" hint-placeholder-val="{{ true }}"><iframe title="" aria-hidden="true" tabindex="-1" srcdoc="{{ er.doc }}" style="position: absolute; top: 0; left: 0; width: 600px; height: 800px; border: 0; transform: scale(0.3); transform-origin: 0 0; pointer-events: none;"></iframe></sc-if><sc-if value="{{ er.writing }}" hint-placeholder-val="{{ false }}"><span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><span style="width: 22px; height: 22px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span></span></sc-if><span style="position: absolute; top: 6px; right: 6px; {{ er.pillStyle }}">{{ er.pill }}</span></span><span style="display: flex; flex-direction: column; gap: 2px; text-align: left;"><span style="font: 800 12.5px Manrope, sans-serif; color: #14182B;">{{ er.n }}. {{ er.name }}</span><span style="font-size: 11.5px; color: #4A5168;">{{ er.when }} · to {{ er.to }}</span></span></button></sc-for></div>
@@ -179,8 +174,7 @@
 <div style="flex: 1 1 320px; min-width: 0; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px;">
 <sc-for list="{{ emFields }}" as="ef" hint-placeholder-count="6"><label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">{{ ef.label }}</span><textarea value="{{ ef.value }}" onInput="{{ ef.set }}" rows="{{ ef.rows }}" style="border-radius: 9px; border: 1px solid #C9CDD8; padding: 8px 10px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label></sc-for>
 <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><button type="button" onClick="{{ saveEmail }}" disabled="{{ emClean }}" style="height: 36px; padding: 0 14px; border-radius: 9px; border: none; background: linear-gradient(160deg,#FF8A4A,#FD5920); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Save changes</button>
-<input value="{{ emNote }}" onInput="{{ setEmNote }}" aria-label="Note for the rewrite" placeholder="Note for a rewrite (optional)" style="flex: 1; min-width: 160px; height: 36px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" />
-<button type="button" onClick="{{ rewriteEmail }}" disabled="{{ busy }}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 700 13px Manrope, sans-serif; cursor: pointer;">Rewrite</button></div>
+<input value="{{ emNote }}" onInput="{{ setEmNote }}" aria-label="Note for CatalystOS about this email (optional)" placeholder="Note for CatalystOS about this email (optional)" style="flex: 1; min-width: 160px; height: 36px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></div>
 </div>
 <div style="flex: 0 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 6px;"><span style="font-size: 12px; color: #4A5168;"><b>Subject:</b> {{ emSubject }} · <b>Preview text:</b> {{ emPre }}</span><iframe title="{{ emFrameTitle }}" srcdoc="{{ emDoc }}" style="width: 100%; height: 860px; border: 1px solid #E6E8EC; border-radius: 12px; background: #F3F4F7;"></iframe></div>
 </div>
@@ -275,10 +269,10 @@ const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date:
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
     form: { ...FORM0 },
-    camps: [], busy: false, busyMsg: '', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
+    camps: [], busy: false, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start(); this.sfRegister(0);
+    this.start(); this.sfRegister(0); this.cosCreateMount();
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1); };
     window.addEventListener('message', this._onMsg);
   }
@@ -312,7 +306,7 @@ class Component extends DCLogic {
   pickClient = async (id) => {
     const st = this.state, prev = (st.info || {}).clientId;
     if (!id || id === prev) return;
-    if (st.busy) return this.setState({ err: 'Please wait until the current step finishes, then switch clients.' });
+    if (st.busy) return this.setState({ err: 'Please wait until CatalystOS finishes, then switch clients.' });
     this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
     let info = null; try { info = await this.D.switchClient(id); } catch (e) { console.error(e); }
     if (!info) { const back = prev ? await this.D.switchClient(prev).catch(() => null) : null; if (back) await this.useInfo({ ...st.info, ...back }); return this.setState({ boot: back ? 'ready' : 'error', err: 'That client could not be opened. Try again from the dashboard.', bootMsg: 'That client could not be opened. Try again from the dashboard.' }); }
@@ -324,8 +318,10 @@ class Component extends DCLogic {
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   async persist(o) {
+    const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS create this" made and then undid
+    if (dead()) return o;
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
-    try { const s2 = await this.D.saveOffer(o); this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); this.thumbLater(s2); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); this.thumbLater(s2); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
   }
   // Saved Files thumbnail: the offer's first landing page, drawn a few seconds after the last save (again only when it changed).
   thumbLater(o) {
@@ -389,50 +385,123 @@ class Component extends DCLogic {
     };
   }
   update(fn) { const o = this.offer(); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
+  // The same for one offer by id (a run keeps writing to its own offer even if the person opens another one meanwhile).
+  updateOf(id, fn) { const o = this.state.offers.find((x) => x.id === id); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
   setForm(patch) { this.setState((st) => ({ form: { ...st.form, ...patch } })); }
 
-  // 1. Strategist: plan (or re-plan with the person's note).
-  plan = async () => {
-    if (this.state.busy) return;
+  // The AI work, run only from "Let CatalystOS create this" (the shared CatalystOS panel, catalyst-create.js).
+  // Each step checks alive() so Stop / Undo / Regenerate can cut a run short; failures throw so the panel puts everything back.
+  stopped() { const e = new Error('stopped'); e.stopped = true; return e; }
+  // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
+  async planNew(alive) {
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
     const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
-    this.setState({ busy: true, err: '', busyMsg: camp ? 'We’re planning the strategy around “' + camp.name + '”…' : 'No campaign selected, so we’re choosing a timely direction…' });
-    try {
-      const strategy = await this.D.planOffer({ offer: base, campaign: camp });
-      const o = await this.persist({ ...base, name: strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
-      this.setState({ offerId: o.id, view: 'offer', tab: 'strategy', busy: false, busyMsg: '', note: '' });
-    } catch (e) { console.error(e); this.setState({ busy: false, busyMsg: '', err: 'Could not plan the strategy: ' + (e && e.message || e) }); }
-  };
-  replan = async () => {
-    const o = this.offer(); if (!o || this.state.busy) return;
-    const note = this.state.note.trim(); if (!note) return this.setState({ err: 'Write what you’d like changed, then click Revise.' });
-    this.setState({ busy: true, err: '', busyMsg: 'We’re revising the strategy…' });
-    try { const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note).join('\n') }); await this.update((x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note); x.strategyApproved = null; x.name = strategy.title || x.name; return x; }); this.setState({ busy: false, busyMsg: '', note: '' }); }
-    catch (e) { this.setState({ busy: false, busyMsg: '', err: 'Could not revise: ' + (e && e.message || e) }); }
-  };
-
-  // 2. Designer + Senior Writer: the landing pages and the emails, saved as they're written.
-  buildAll = async () => {
-    const o0 = this.offer(); if (!o0 || this.state.busy) return;
+    const strategy = await this.D.planOffer({ offer: base, campaign: camp });
+    if (!alive()) throw this.stopped();
+    const o = await this.persist({ ...base, name: strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
+    this.setState({ offerId: o.id, view: 'offer', tab: 'strategy', note: '' });
+    return o;
+  }
+  // Revise the open offer's strategy with the changes the person wrote.
+  async replanOffer(note, alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note).join('\n') });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
+    this.setState({ note: '' });
+  }
+  // The landing pages (in the offer's panel design) and the emails, saved as they're written.
+  async buildOffer(alive) {
+    if (!alive()) throw this.stopped();
+    const o0 = this.offer(); if (!o0) throw new Error('No content offer is open.');
     const st = o0.strategy || {}, b = this.D.siteBrand(), camp = this.campaign(o0.campaignId);
     const opts = this.P.designOptions('offer', b.industry), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
     const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
     const emails = (st.emails || []).map((e) => ({ ...e, content: null, approved: null }));
     let o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails });
-    this.setState({ busy: true, err: '', tab: 'pages', pageIdx: 0, emailIdx: 0 });
-    try {
-      for (let i = 0; i < pages.length; i++) {
-        const sections = await this.D.writeOfferPage({ offer: o, key: pages[i].key, campaign: camp, onStatus: (m) => this.setState({ busyMsg: m + ' (page ' + (i + 1) + ' of ' + pages.length + ')' }) });
-        o = await this.update((x) => { x.pages[i].sections = sections; return x; }) || o;
-      }
-      for (let i = 0; i < emails.length; i++) {
-        this.setState({ busyMsg: 'We’re writing email ' + (i + 1) + ' of ' + emails.length + ': “' + emails[i].name + '”…' });
-        const content = await this.D.writeOfferEmail({ offer: o, email: emails[i], index: i, campaign: camp });
-        o = await this.update((x) => { x.emails[i].content = content; return x; }) || o;
-      }
-      this.setState({ busy: false, busyMsg: '' });
-    } catch (e) { console.error(e); this.setState({ busy: false, busyMsg: '', err: 'Could not finish writing: ' + (e && e.message || e) }); }
-  };
+    if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
+    for (let i = 0; i < pages.length; i++) {
+      const sections = await this.D.writeOfferPage({ offer: o, key: pages[i].key, campaign: camp });
+      if (!alive()) throw this.stopped();
+      o = await this.updateOf(o.id, (x) => { x.pages[i].sections = sections; return x; }) || o;
+    }
+    for (let i = 0; i < emails.length; i++) {
+      const content = await this.D.writeOfferEmail({ offer: o, email: emails[i], index: i, campaign: camp });
+      if (!alive()) throw this.stopped();
+      o = await this.updateOf(o.id, (x) => { x.emails[i].content = content; return x; }) || o;
+    }
+  }
+  // One landing page again (the page open on the Landing pages tab).
+  async rewritePage(i, alive) {
+    const o = this.offer(), pg = o && o.pages[i]; if (!pg) throw new Error('No landing page is open.');
+    const sections = await this.D.writeOfferPage({ offer: o, key: pg.key, campaign: this.campaign(o.campaignId) });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.pages[i].sections = sections; x.pages[i].approved = null; return x; });
+  }
+  // One email again (the email open on the Emails tab), with the person's note if they wrote one.
+  async rewriteEmailAt(i, alive) {
+    const o = this.offer(), em = o && o.emails[i]; if (!em) throw new Error('No email is open.');
+    const content = await this.D.writeOfferEmail({ offer: o, email: em, index: i, campaign: this.campaign(o.campaignId), note: this.state.emNote.trim() || (em.content ? 'Write a genuinely different version.' : '') });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.emails[i].content = content; x.emails[i].approved = null; return x; });
+    this.setState({ emDraft: null, emNote: '' });
+  }
+  // What "Let CatalystOS create this" works on, read from what is open (never asked):
+  // the start screen → a whole new offer; Landing pages → the open page; Emails → the open email; Strategy or Launch → every page and email
+  // (after revising the strategy if the person wrote changes).
+  ccTarget() {
+    const st = this.state, o = this.offer();
+    if (st.view !== 'offer' || !o) return { what: 'new' };
+    if (st.tab === 'pages' && o.pages.length) return { what: 'page', i: Math.min(st.pageIdx, o.pages.length - 1) };
+    if (st.tab === 'emails' && o.emails.length) return { what: 'email', i: Math.min(st.emailIdx, o.emails.length - 1) };
+    return { what: 'offer' };
+  }
+  ccNotes() {
+    const o = this.offer(); if (!o) return [];
+    const notes = ((o.strategy || {}).assumptions || []).map((t) => 'Confirm: ' + t);
+    const seen = {}; const find = (v) => { if (typeof v === 'string') (v.match(/\[[^\]\n]{2,60}\]/g) || []).forEach((m) => { seen[m] = 1; }); else if (v && typeof v === 'object') Object.values(v).forEach(find); };
+    find((o.pages || []).map((p) => p.sections)); find((o.emails || []).map((e) => e.content));
+    Object.keys(seen).slice(0, 6).forEach((m) => notes.push('Fill in: ' + m));
+    return notes;
+  }
+  cosCreateMount() {
+    const go = () => {
+      if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
+      window.CatalystCreate.mount({
+        enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit,
+        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
+        context: () => {
+          const t = this.ccTarget(), o = this.offer(), O = this.O;
+          if (t.what === 'new') { const c = this.campaign(this.formCampId()); return { kind: O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
+          const kind = t.what === 'page' ? 'Landing page: ' + o.pages[t.i].title : t.what === 'email' ? 'Email: ' + o.emails[t.i].name : O.offerById(o.kind).label;
+          return { kind, campaign: o.campaignName || '' };
+        },
+        modes: ['writing'],
+        snapshot: () => { const st = this.state, o = this.offer(); return JSON.stringify({ view: st.view, offerId: st.offerId, tab: st.tab, pageIdx: st.pageIdx, emailIdx: st.emailIdx, note: st.note, emNote: st.emNote, ids: st.offers.map((x) => x.id), offer: o }); },
+        restore: (snap) => {
+          let x = null; try { x = JSON.parse(snap); } catch (e) { return; }
+          this._ccGen = (this._ccGen || 0) + 1;   // any run still going stops at its next step
+          const keep = new Set(x.ids || []);
+          this.state.offers.filter((y) => !keep.has(y.id)).forEach((y) => { (this._ccDead = this._ccDead || {})[y.id] = 1; this.deleteOfferNow(y.id); });
+          if (x.offer) this.persist(x.offer);
+          this.setState({ busy: false, err: '', view: x.view, offerId: x.offerId, tab: x.tab, pageIdx: x.pageIdx, emailIdx: x.emailIdx, note: x.note || '', emNote: x.emNote || '', emDraft: null, field: null, delAsk: false });
+        },
+        run: async () => {
+          const gen = this._ccGen = (this._ccGen || 0) + 1, alive = () => gen === this._ccGen;
+          const t = this.ccTarget(); this.setState({ busy: true, err: '', field: null, delAsk: false });
+          try {
+            if (t.what === 'new') { await this.planNew(alive); await this.buildOffer(alive); }
+            else if (t.what === 'page') await this.rewritePage(t.i, alive);
+            else if (t.what === 'email') await this.rewriteEmailAt(t.i, alive);
+            else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note) await this.replanOffer(note, alive); await this.buildOffer(alive); }
+            if (!alive()) throw this.stopped();
+            return { notes: this.ccNotes() };
+          } finally { if (alive()) this.setState({ busy: false }); }
+        },
+      });
+    };
+    go();
+  }
 
   // Landing page editing: click text to edit; arrows step a panel's layout. Any change sends the page back to review.
   stepLayout(si, d) { const pi = this.state.pageIdx; this.update((o) => { const sec = o.pages[pi] && o.pages[pi].sections[si]; const fam = sec && this.P.FAMILY_OF[sec.kind]; if (!fam) return o; const cur = sec.layout != null ? sec.layout : ((o.design && o.design.lay) || {})[fam] || 0; sec.layout = (cur + d + 5) % 5; o.pages[pi].approved = null; return o; }); }
@@ -447,12 +516,6 @@ class Component extends DCLogic {
   // Emails: edit the fields, rewrite with a note, approve.
   emCur() { const o = this.offer(); return o && o.emails[Math.min(this.state.emailIdx, o.emails.length - 1)]; }
   saveEmail = () => { const d = this.state.emDraft; if (!d) return; const i = this.state.emailIdx; this.update((o) => { o.emails[i].content = { ...(o.emails[i].content || {}), ...d, bullets: String(d.bullets != null ? d.bullets : (o.emails[i].content.bullets || []).join('\n')).split('\n').map((x) => x.trim()).filter(Boolean) }; o.emails[i].by = 'person'; o.emails[i].approved = null; return o; }); this.setState({ emDraft: null }); };
-  rewriteEmail = async () => {
-    const o = this.offer(), i = this.state.emailIdx, em = this.emCur(); if (!o || !em || this.state.busy) return;
-    this.setState({ busy: true, err: '', busyMsg: 'We’re rewriting “' + em.name + '”…' });
-    try { const content = await this.D.writeOfferEmail({ offer: o, email: em, index: i, campaign: this.campaign(o.campaignId), note: this.state.emNote || 'Write a genuinely different version.' }); await this.update((x) => { x.emails[i].content = content; x.emails[i].approved = null; return x; }); this.setState({ busy: false, busyMsg: '', emDraft: null, emNote: '' }); }
-    catch (e) { this.setState({ busy: false, busyMsg: '', err: 'Could not rewrite: ' + (e && e.message || e) }); }
-  };
   approval(on) { return on ? { by: this.D.userEmail(), at: Date.now() } : null; }
 
   // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
@@ -531,7 +594,7 @@ class Component extends DCLogic {
   renderVals() {
     const st = this.state, ready = st.boot === 'ready', info = st.info || {};
     const base = { showShell: true, agency: info.agency || '', clientName: this.D ? this.D.clientName() : '', clientId: info.clientId || '', email: (info.user && info.user.email) || '', backHref: this.D ? this.D.dashboardUrl() : '#', clients: info.clients || [], pickClient: this.pickClient, signOut: () => this.D && this.D.signOut(),
-      notReady: !ready, isLoading: st.boot === 'loading', bootTitle: st.boot === 'loading' ? 'Loading' : st.boot === 'error' ? 'Something went wrong' : 'Content Offer Builder', bootMsg: st.bootMsg, hasErr: !!st.err, err: st.err, busy: st.busy, busyMsg: st.busyMsg };
+      notReady: !ready, isLoading: st.boot === 'loading', bootTitle: st.boot === 'loading' ? 'Loading' : st.boot === 'error' ? 'Something went wrong' : 'Content Offer Builder', bootMsg: st.bootMsg, hasErr: !!st.err, err: st.err, busy: st.busy };
     if (!ready || !this.O) return { ...base, ready: false };
     const O = this.O, f = st.form, K = O.offerById(f.kind), o = this.offer(), isOffer = st.view === 'offer' && !!o;
     const campId = this.formCampId();
@@ -553,13 +616,8 @@ class Component extends DCLogic {
       isWebinar: f.kind === 'webinar', tplCards: f.kind === 'webinar' ? this.W.WEBINAR_TEMPLATES.map((t) => ({ name: t.name, desc: t.desc, on: (f.tpl || 'editorial') === t.id, pressed: (f.tpl || 'editorial') === t.id ? 'true' : 'false', doc: this.sampleDoc('webinar', 'offer', t.id), pick: () => this.setForm({ tpl: t.id }), zoom: () => this.setState({ zoom: { kind: 'webinar', key: 'offer', tpl: t.id } }), label: 'Use the ' + t.name + ' template', zoomLabel: 'See the ' + t.name + ' template larger',
         style: 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px 10px;border-radius:12px;cursor:pointer;text-align:left;' + ((f.tpl || 'editorial') === t.id ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FAFAFC;border:1px solid #E6E8EC;') })) : [],
       peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
-      plan: this.plan, planLabel: st.busy && !isOffer ? 'Planning…' : 'Plan the strategy', planStyle: 'height:44px;padding:0 20px;border:none;border-radius:11px;background:linear-gradient(160deg,#FF8A4A,#FD5920);color:#FFFFFF;font:800 14px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
-      funnelTitle: 'How a ' + K.noun + ' offer comes together', howSteps: [
-        { n: 1, title: 'Strategy', text: 'We plan the objective, audience, angle, pages and emails, each with the reason and where it came from. You review it and ask for changes.' },
-        { n: 2, title: 'Writing and design', text: 'We write every landing page and email through Brand Command, in the client’s voice and brand, around the campaign.' },
-        { n: 3, title: 'Review', text: 'Edit any text, try other panel layouts, rewrite an email with a note, and approve each piece.' },
-        { n: 4, title: 'Launch', text: 'Download all the web files and emails to launch yourself, or build it in HubSpot (coming next).' }],
+      funnelTitle: 'How a ' + K.noun + ' offer comes together',
       funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: K.replay ? ({ offer: 'Sign-up page: the replay video with an arrow to play it, what they’ll learn, the speakers, the form.', video: 'The replay itself: the video, its chapters and the next step.' }[k] || '') : { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
       funnelEmails: this.D.seqFor({ kind: f.kind, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
         open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
@@ -591,14 +649,13 @@ class Component extends DCLogic {
     Object.assign(vals, { stratPill: o.strategyApproved ? PILL.approved[0] : PILL.review[0], stratPillStyle: pill(o.strategyApproved ? 'approved' : 'review').replace('margin-left:8px;', ''), stratBy: o.strategyApproved ? 'Approved by ' + (o.strategyApproved.by || 'you') + ' · ' + new Date(o.strategyApproved.at).toLocaleString('en-US') : 'Planned ' + (s.at ? new Date(s.at).toLocaleString('en-US') : ''),
       stratApprovedAria: o.strategyApproved ? 'true' : 'false', stratTrack: track(!!o.strategyApproved), stratKnob: knob(!!o.strategyApproved),
       toggleStrat: () => this.update((x) => { x.strategyApproved = this.approval(!x.strategyApproved); if (x.strategyApproved) this.D.recordApproval('strategy', 'Content offer strategy · ' + (x.name || ''), x.strategy); return x; }),
-      buildAll: this.buildAll, buildLabel: st.busy ? 'Working…' : nP || nE ? 'Rebuild pages and emails' : 'Build pages and emails', buildStyle: 'height:38px;padding:0 16px;border:none;border-radius:10px;background:linear-gradient(160deg,#FF8A4A,#FD5920);color:#FFFFFF;font:800 13px Manrope,sans-serif;cursor:pointer;' + (st.busy ? 'opacity:.6;' : ''),
       sTitle: s.title || o.name, sSummary: s.summary || '', hasTitleOptions: !!(s.titleOptions || []).length, titleOptions: (s.titleOptions || []).map((t) => ({ label: t, pick: () => this.update((x) => { const old = x.strategy.title; x.strategy.title = t; x.strategy.titleOptions = x.strategy.titleOptions.filter((y) => y !== t).concat(old ? [old] : []); x.name = t; x.strategyApproved = null; return x; }) })),
       decisions: [D('Objective', s.objective), D('Audience', s.audience, s.audience && s.audience.pain ? 'Their pain: “' + s.audience.pain + '”' : ''), D('Angle', s.angle)],
       kindNoun: O.offerById(o.kind).noun, sFit: s.fit || '', promise: (s.promise || []).map((t) => ({ text: t })),
       planPages: (s.pages || []).map((p) => ({ title: p.key === 'offer' ? 'Main landing page' : (this.K.PAGES[p.key] || {}).title || p.key, job: p.job, why: p.why || '—' })),
       planEmails: (s.emails || []).map((e, i) => ({ n: i + 1, name: e.name, when: e.when, to: e.to, goal: e.goal, why: e.why || '—', removeLabel: 'Remove the ' + e.name + ' email', remove: () => this.update((x) => { x.strategy.emails = x.strategy.emails.filter((_, j) => j !== i); x.strategyApproved = null; return x; }) })),
       metrics: (s.metrics || []).map((m) => m), assumptions: (s.assumptions || []).map((t) => ({ text: t })), risks: (s.risks || []).map((t) => ({ text: t })),
-      noteVal: st.note, setNote: (e) => this.setState({ note: e.target.value }), replan: this.replan });
+      noteVal: st.note, setNote: (e) => this.setState({ note: e.target.value }) });
 
     // Landing pages
     const pi = Math.min(st.pageIdx, Math.max(0, nP - 1)), pg = o.pages[pi], b = this.pageBrand(o);
@@ -629,7 +686,7 @@ class Component extends DCLogic {
       emApprovedAria: em && em.approved ? 'true' : 'false', emTrack: track(!!(em && em.approved)), emKnob: knob(!!(em && em.approved)),
       toggleEmail: () => { if (!em || !em.content) return; this.update((x) => { const e = x.emails[ei]; e.approved = this.approval(!e.approved); if (e.approved) this.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (x.name || ''), e.content); return x; }); },
       emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
-      saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }), rewriteEmail: this.rewriteEmail,
+      saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }),
       emSubject: fv('subject'), emPre: fv('preheader'), emFrameTitle: 'Preview of the ' + (em ? em.name : '') + ' email',
       emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
 
@@ -639,7 +696,7 @@ class Component extends DCLogic {
       gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
       urlVal: o.pageUrl || '', setUrl: (e) => { const v = e.target.value; this.update((x) => { x.pageUrl = v; return x; }); }, formVal: o.formUrl || '', setForm: (e) => { const v = e.target.value; this.update((x) => { x.formUrl = v; return x; }); },
-      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Build the pages and emails first.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
+      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS create this.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;
   }
