@@ -300,10 +300,12 @@ class Component extends DCLogic {
       if (this.state.boot !== 'ready' || this.D.clientId() !== p.client) fail('Could not open that client.');
     }
     const words = ((p.title || '') + ' ' + (p.brief || '')).toLowerCase();
-    const kind = /replay|on[- ]demand|recording/.test(words) ? 'replay' : /webinar/.test(words) ? 'webinar' : /workshop|masterclass|bootcamp/.test(words) ? 'workshop' : /white ?paper|report|research/.test(words) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(words) ? 'guide' : 'whitepaper';
+    let spec = {}; try { spec = JSON.parse(p.spec || '{}') || {}; } catch (e) {}
+    const specKind = { 'guide or checklist': 'guide', 'white paper or report': 'whitepaper', webinar: 'webinar', workshop: 'workshop', 'webinar replay': 'replay' }[String(spec.offerType || '').toLowerCase()];
+    const kind = specKind ? specKind : /replay|on[- ]demand|recording/.test(words) ? 'replay' : /webinar/.test(words) ? 'webinar' : /workshop|masterclass|bootcamp/.test(words) ? 'workshop' : /white ?paper|report|research/.test(words) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(words) ? 'guide' : 'whitepaper';
     this._ccAuto = { title: String(p.title || '').trim() };
     await new Promise((r) => this.setState({ view: 'new', offerId: null, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', note: '', emDraft: null, emNote: '', delAsk: false, zoom: null, seqEdit: null,
-      form: { ...FORM0, kind, title: String(p.title || '').trim(), topic: String(p.brief || '').trim(), camp: p.campaign || 'none' } }, r));
+      form: { ...FORM0, kind, title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
   }
   // Save exactly as the app does (the offer, then its Saved Files entry with the campaign), waited for; first landing page as the thumbnail.
   async ccAutoSave(p) {
