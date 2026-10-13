@@ -87,6 +87,28 @@ class Component extends DCLogic {
     this._shotT = this._shotT || {}; clearTimeout(this._shotT[o.id]);
     this._shotT[o.id] = setTimeout(() => this.shotOffer(o).then((thumb) => { const sent = this._shotSent || (this._shotSent = {}); if (thumb && thumb !== sent[o.id] && (this.state.info || {}).clientId === cid) { sent[o.id] = thumb; this.D.indexThumb(o, thumb, cid); } }).catch(() => {}), 4000);
   }
+  // The offer as a PDF: every page full length (motion off), one PDF page per page.
+  async offerPdf(o) {
+    if (!o || !(o.pages || []).length) throw new Error('There is no page to export yet.');
+    if (!window.CatalystCreate || !window.CatalystCreate.pdfFrom) throw new Error('The PDF tool isn’t available.');
+    const still = { ...o, design: { ...(o.design || {}), motion: 0 }, pages: o.pages.map((p) => ({ ...p, sections: (p.sections || []).map((x) => ({ ...x, motion: 0 })) })) };
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const frames = [];
+    try {
+      const bodies = [];
+      for (let i = 0; i < still.pages.length; i++) {
+        if (!(still.pages[i].sections || []).length) continue;
+        const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.title = 'PDF';
+        fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:1280px;height:900px;border:0;pointer-events:none;'; frames.push(fr);
+        const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.renderOfferPage(still, i, this.pageBrand(still), { preview: true }); document.body.appendChild(fr);
+        await Promise.race([loaded, wait(8000)]); const d = fr.contentDocument; if (!d || !d.body) continue;
+        try { await Promise.race([d.fonts && d.fonts.ready, wait(2500)]); } catch (e) {}
+        await Promise.all([].map.call(d.querySelectorAll('img'), (im) => (im.complete ? 0 : Promise.race([new Promise((r) => { im.onload = im.onerror = r; }), wait(6000)]))));
+        fr.style.height = Math.min(12000, Math.max(900, d.documentElement.scrollHeight)) + 'px'; await wait(400);
+        bodies.push(d.body);
+      }
+      return await window.CatalystCreate.pdfFrom(bodies, { scale: 1.25 });
+    } finally { frames.forEach((f) => f.remove()); }
+  }
   async shotOffer(o) {
     let fr = null;
     try {
@@ -261,6 +283,7 @@ class Component extends DCLogic {
         autoReady: () => this.state.boot !== 'loading' && (this.state.boot !== 'ready' || !!this.O),
         autoPrepare: (p) => this.ccAutoPrepare(p),
         autoSave: (p) => this.ccAutoSave(p),
+        autoPdf: () => this.offerPdf(this._pdfOffer),
       });
     };
     go();
@@ -292,6 +315,7 @@ class Component extends DCLogic {
     let thumb = ''; try { thumb = await this.shotOffer(s2); } catch (e) {}
     await this.D.indexSaveNow(s2, cid, thumb);
     this._ccAuto = null;
+    this._pdfOffer = s2;
     return { app: this.D.APP, ref: s2.id, title: s2.name || 'Content offer', thumb, openUrl: this.D.offerOpenUrl(s2.id, cid) };
   }
 
