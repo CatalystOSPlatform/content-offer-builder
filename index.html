@@ -398,7 +398,7 @@ class Component extends DCLogic {
     const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     const strategy = await this.D.planOffer({ offer: base, campaign: camp });
     if (!alive()) throw this.stopped();
-    const o = await this.persist({ ...base, name: strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
+    const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
     this.setState({ offerId: o.id, view: 'offer', tab: 'strategy', note: '' });
     return o;
   }
@@ -498,9 +498,43 @@ class Component extends DCLogic {
             return { notes: this.ccNotes() };
           } finally { if (alive()) this.setState({ busy: false }); }
         },
+        // Hands-off runs (the runner opens this app with ?cos_auto=1&client=…&campaign=…&kind=content-offer&title=…&brief=…).
+        autoKinds: ['content-offer'],
+        autoReady: () => this.state.boot !== 'loading' && (this.state.boot !== 'ready' || !!this.O),
+        autoPrepare: (p) => this.ccAutoPrepare(p),
+        autoSave: (p) => this.ccAutoSave(p),
       });
     };
     go();
+  }
+
+  // Open the client, then the start screen for a new offer: the kind read from the title and brief, the runner's title,
+  // the brief as the topic, the runner's campaign. Never asks.
+  async ccAutoPrepare(p) {
+    const fail = (m) => { const e = new Error(m); e.userMessage = m; throw e; };
+    if (this.state.boot !== 'ready' || !this.D || !this.O) fail(this.state.bootMsg || 'The Content Offer Builder could not open.');
+    if (p.client && p.client !== this.D.clientId()) {
+      await this.pickClient(p.client);
+      for (let i = 0; i < 240 && this.state.boot === 'loading'; i++) await new Promise((r) => setTimeout(r, 250));
+      if (this.state.boot !== 'ready' || this.D.clientId() !== p.client) fail('Could not open that client.');
+    }
+    const words = ((p.title || '') + ' ' + (p.brief || '')).toLowerCase();
+    const kind = /replay|on[- ]demand|recording/.test(words) ? 'replay' : /webinar/.test(words) ? 'webinar' : /workshop|masterclass|bootcamp/.test(words) ? 'workshop' : /white ?paper|report|research/.test(words) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(words) ? 'guide' : 'whitepaper';
+    this._ccAuto = { title: String(p.title || '').trim() };
+    await new Promise((r) => this.setState({ view: 'new', offerId: null, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', note: '', emDraft: null, emNote: '', delAsk: false, zoom: null, seqEdit: null,
+      form: { ...FORM0, kind, title: String(p.title || '').trim(), topic: String(p.brief || '').trim(), camp: p.campaign || 'none' } }, r));
+  }
+  // Save exactly as the app does (the offer, then its Saved Files entry with the campaign), waited for; first landing page as the thumbnail.
+  async ccAutoSave(p) {
+    const cur = this.offer(); if (!cur) throw new Error('No content offer was made.');
+    const o = { ...cur, name: String(p.title || '').trim() || cur.name, campaignId: p.campaign || cur.campaignId || null };
+    if (p.campaign && o.campaignId !== cur.campaignId) { const c = this.campaign(p.campaign); o.campaignName = c ? c.name : ''; }
+    const cid = this.D.clientId(), s2 = await this.D.saveOffer(o);
+    this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' }));
+    let thumb = ''; try { thumb = await this.shotOffer(s2); } catch (e) {}
+    await this.D.indexSaveNow(s2, cid, thumb);
+    this._ccAuto = null;
+    return { app: this.D.APP, ref: s2.id, title: s2.name || 'Content offer', thumb, openUrl: this.D.offerOpenUrl(s2.id, cid) };
   }
 
   // Landing page editing: click text to edit; arrows step a panel's layout. Any change sends the page back to review.
