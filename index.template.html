@@ -138,6 +138,25 @@
 </section>
 </sc-if>
 
+<sc-if value="{{ tabDoc }}" hint-placeholder-val="{{ false }}">
+<section aria-label="{{ docLabel }}" style="display: flex; flex-direction: column; gap: 12px;">
+<sc-if value="{{ docIdle }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">The {{ docNoun }} isn’t written yet</h2><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS create this. We write and design the {{ docNoun }} as real pages in this client’s brand, from the strategy and Brand Command.</p></div></sc-if>
+<sc-if value="{{ docWriting }}" hint-placeholder-val="{{ false }}"><div role="status" style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; max-width: 760px;"><span style="width: 20px; height: 20px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span><span style="font: 700 13.5px Manrope, sans-serif; color: #081A53;">Writing and designing the {{ docNoun }}…</span></div></sc-if>
+<sc-if value="{{ hasDoc }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
+<span style="font-size: 12.5px; color: #4A5168;">{{ docInfo }}</span>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" onClick="{{ docPdf }}" disabled="{{ docPdfBusy }}" style="height: 36px; padding: 0 16px; border-radius: 9px; border: none; background: linear-gradient(160deg,#FF8A4A,#FD5920); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">{{ docPdfLabel }}</button>
+<span id="cob-da" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve {{ docNoun }}</span><button type="button" role="switch" aria-checked="{{ docApprovedAria }}" aria-labelledby="cob-da" onClick="{{ toggleDoc }}" style="{{ docTrack }}"><span style="{{ docKnob }}"></span></button>
+</div>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #4A5168;">Click any text on the pages to edit it. Pages reflow on their own.</p>
+<iframe title="{{ docFrameTitle }}" srcdoc="{{ docSrc }}" style="width: 100%; max-width: 900px; height: 1180px; align-self: center; border: 1px solid #E6E8EC; border-radius: 12px; background: #E9EBF0;"></iframe>
+<label style="display: flex; flex-direction: column; gap: 6px; max-width: 900px; align-self: center; width: 100%;"><span class="cob-lbl">Changes you’d like the next time CatalystOS writes it (optional)</span><input value="{{ docNoteVal }}" onInput="{{ setDocNote }}" placeholder="e.g. More practical, add a checklist, shorter sections" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+</sc-if>
+</section>
+</sc-if>
+
 <sc-if value="{{ tabPages }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Landing pages" style="display: flex; flex-direction: column; gap: 12px;">
 <sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No landing pages yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>

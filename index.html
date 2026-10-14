@@ -138,6 +138,25 @@
 </section>
 </sc-if>
 
+<sc-if value="{{ tabDoc }}" hint-placeholder-val="{{ false }}">
+<section aria-label="{{ docLabel }}" style="display: flex; flex-direction: column; gap: 12px;">
+<sc-if value="{{ docIdle }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">The {{ docNoun }} isn’t written yet</h2><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS create this. We write and design the {{ docNoun }} as real pages in this client’s brand, from the strategy and Brand Command.</p></div></sc-if>
+<sc-if value="{{ docWriting }}" hint-placeholder-val="{{ false }}"><div role="status" style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; max-width: 760px;"><span style="width: 20px; height: 20px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span><span style="font: 700 13.5px Manrope, sans-serif; color: #081A53;">Writing and designing the {{ docNoun }}…</span></div></sc-if>
+<sc-if value="{{ hasDoc }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
+<span style="font-size: 12.5px; color: #4A5168;">{{ docInfo }}</span>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+<button type="button" onClick="{{ docPdf }}" disabled="{{ docPdfBusy }}" style="height: 36px; padding: 0 16px; border-radius: 9px; border: none; background: linear-gradient(160deg,#FF8A4A,#FD5920); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">{{ docPdfLabel }}</button>
+<span id="cob-da" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve {{ docNoun }}</span><button type="button" role="switch" aria-checked="{{ docApprovedAria }}" aria-labelledby="cob-da" onClick="{{ toggleDoc }}" style="{{ docTrack }}"><span style="{{ docKnob }}"></span></button>
+</div>
+</div>
+<p style="margin: 0; font-size: 12.5px; color: #4A5168;">Click any text on the pages to edit it. Pages reflow on their own.</p>
+<iframe title="{{ docFrameTitle }}" srcdoc="{{ docSrc }}" style="width: 100%; max-width: 900px; height: 1180px; align-self: center; border: 1px solid #E6E8EC; border-radius: 12px; background: #E9EBF0;"></iframe>
+<label style="display: flex; flex-direction: column; gap: 6px; max-width: 900px; align-self: center; width: 100%;"><span class="cob-lbl">Changes you’d like the next time CatalystOS writes it (optional)</span><input value="{{ docNoteVal }}" onInput="{{ setDocNote }}" placeholder="e.g. More practical, add a checklist, shorter sections" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+</sc-if>
+</section>
+</sc-if>
+
 <sc-if value="{{ tabPages }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Landing pages" style="display: flex; flex-direction: column; gap: 12px;">
 <sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No landing pages yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>
@@ -276,7 +295,9 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this.start(); this.sfRegister(0); this.cosCreateMount();
-    this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1); };
+    this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
+      if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
+      if (d.cod === 'pages' && d.n) { if (this._docY != null) { try { e.source.scrollTo(0, this._docY); } catch (x) {} this._docY = null; } if (this.state.docPages !== d.n) this.setState({ docPages: d.n }); } };
     window.addEventListener('message', this._onMsg);
   }
   componentWillUnmount() { window.removeEventListener('message', this._onMsg); }
@@ -292,7 +313,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js');
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js');
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -333,7 +354,38 @@ class Component extends DCLogic {
     this._shotT[o.id] = setTimeout(() => this.shotOffer(o).then((thumb) => { const sent = this._shotSent || (this._shotSent = {}); if (thumb && thumb !== sent[o.id] && (this.state.info || {}).clientId === cid) { sent[o.id] = thumb; this.D.indexThumb(o, thumb, cid); } }).catch(() => {}), 4000);
   }
   // The offer as a PDF: every page full length (motion off), one PDF page per page.
+  // The white paper or guide as a PDF: its real pages, one PDF page each.
+  async docFrame(o) {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.title = 'PDF';
+    fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:900px;height:1200px;border:0;pointer-events:none;';
+    const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.Dk.renderDoc(o.doc, this.D.siteBrand(), { kind: o.kind }); document.body.appendChild(fr);
+    await Promise.race([loaded, wait(8000)]); const d = fr.contentDocument;
+    try { await Promise.race([d.fonts && d.fonts.ready, wait(3000)]); } catch (e) {}
+    await Promise.all([].map.call(d.querySelectorAll('img'), (im) => (im.complete ? 0 : Promise.race([new Promise((r) => { im.onload = im.onerror = r; }), wait(6000)]))));
+    for (let i = 0; i < 40 && !d.querySelector('#flow .pg'); i++) await wait(100);
+    await wait(300); return fr;
+  }
+  docPdf = async () => {
+    const o = this.offer(); if (!o || !o.doc) return;
+    if (!window.CatalystCreate || !window.CatalystCreate.pdfFrom) return this.setState({ err: 'The PDF tool isn’t available. Please reload the page.' });
+    this.setState({ docPdfBusy: true, err: '' }); let fr = null;
+    try {
+      fr = await this.docFrame(o); const { blob, thumb } = await window.CatalystCreate.pdfFrom(fr.contentDocument.querySelectorAll('.pg'), { scale: 1.6 });
+      const name = (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.pdf';
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      try { const sf = await import(this.D.PILOT + 'saved-files.js'); if (sf.setExport) sf.setExport(this.D.clientId(), this.D.APP, o.id, blob, thumb).catch(() => {}); } catch (e) {}
+    } catch (e) { this.setState({ err: 'Could not make the PDF: ' + (e && e.message || e) }); }
+    finally { if (fr) fr.remove(); this.setState({ docPdfBusy: false }); }
+  };
+  // A click-to-edit change inside the document. Any change sends it back to review.
+  editDoc(path, v) {
+    const o = this.offer(); if (!o || !o.doc) return; const cur = getPath(o.doc, path);
+    if (cur == null || String(cur).trim() === String(v).trim()) return;
+    this.update((x) => { x.doc = setPath(x.doc, path, v); x.doc.by = 'person'; x.doc.approved = null; return x; });
+  }
   async offerPdf(o) {
+    if (o && o.doc && this.Dk) { let fr = null; try { fr = await this.docFrame(o); return await window.CatalystCreate.pdfFrom(fr.contentDocument.querySelectorAll('.pg'), { scale: 1.4 }); } finally { if (fr) fr.remove(); } }
     if (!o || !(o.pages || []).length) throw new Error('There is no page to export yet.');
     if (!window.CatalystCreate || !window.CatalystCreate.pdfFrom) throw new Error('The PDF tool isn’t available.');
     const still = { ...o, design: { ...(o.design || {}), motion: 0 }, pages: o.pages.map((p) => ({ ...p, sections: (p.sections || []).map((x) => ({ ...x, motion: 0 })) })) };
@@ -396,15 +448,15 @@ class Component extends DCLogic {
     return {
       // The whole offer: the strategy and every landing page and email (each approval recorded in Brand Command, as the switches here do).
       async approve(ref, on, rec) { const o = await self.sfOffer(ref, rec); if (!o) return; const a = self.approval(!!on);
-        o.strategyApproved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
+        o.strategyApproved = a; if (o.doc) o.doc.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
         await self.persist(o);
-        if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
+        if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); if (o.doc) self.D.recordApproval('doc', self.O.offerById(o.kind).label + ' · ' + (o.name || ''), o.doc); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
       // An offer is for one Brand Command campaign: the one newly picked (or none).
       async campaigns(ref, ids, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
         const ok = (ids || []).filter(Boolean); const id = ok.find((x) => x !== o.campaignId) || (ok.indexOf(o.campaignId) >= 0 ? o.campaignId : null); const c = id ? self.campaign(id) : null;
         o.campaignId = id || null; o.campaignName = c ? c.name : (id ? o.campaignName || '' : ''); await self.persist(o); },
       async duplicate(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
-        const copy = { ...o, id: 'o' + Date.now(), name: (o.name || o.title || 'Content offer') + ' copy', strategyApproved: null, pages: (o.pages || []).map((p) => ({ ...p, approved: null })), emails: (o.emails || []).map((e) => ({ ...e, approved: null })), createdAt: Date.now() };
+        const copy = { ...o, id: 'o' + Date.now(), name: (o.name || o.title || 'Content offer') + ' copy', strategyApproved: null, ...(o.doc ? { doc: { ...o.doc, approved: null } } : {}), pages: (o.pages || []).map((p) => ({ ...p, approved: null })), emails: (o.emails || []).map((e) => ({ ...e, approved: null })), createdAt: Date.now() };
         await self.persist(copy); return copy.id; },
       async remove(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (o) await self.deleteOfferNow(ref); },
     };
@@ -443,8 +495,13 @@ class Component extends DCLogic {
     const opts = this.P.designOptions('offer', b.industry), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
     const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
     const emails = (st.emails || []).map((e) => ({ ...e, content: null, approved: null }));
-    let o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails });
-    if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
+    let o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) ? { doc: null } : {}) });
+    if (this.isDocKind(o0)) {
+      if (this.state.tab === 'strategy') this.setState({ tab: 'doc', pageIdx: 0, emailIdx: 0 });
+      const doc = await this.D.writeOfferDoc({ offer: o, campaign: camp });
+      if (!alive()) throw this.stopped();
+      o = await this.updateOf(o.id, (x) => { x.doc = { ...doc, approved: null }; return x; }) || o;
+    } else if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
     for (let i = 0; i < pages.length; i++) {
       const sections = await this.D.writeOfferPage({ offer: o, key: pages[i].key, campaign: camp });
       if (!alive()) throw this.stopped();
@@ -455,6 +512,15 @@ class Component extends DCLogic {
       if (!alive()) throw this.stopped();
       o = await this.updateOf(o.id, (x) => { x.emails[i].content = content; return x; }) || o;
     }
+  }
+  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide'); }
+  // The white paper or guide again (from its tab).
+  async rewriteDoc(alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const doc = await this.D.writeOfferDoc({ offer: o, campaign: this.campaign(o.campaignId), note: this.state.docNote ? this.state.docNote.trim() : (o.doc ? 'Write a genuinely different version.' : '') });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.doc = { ...doc, approved: null }; return x; });
+    this.setState({ docNote: '' });
   }
   // One landing page again (the page open on the Landing pages tab).
   async rewritePage(i, alive) {
@@ -477,6 +543,7 @@ class Component extends DCLogic {
   ccTarget() {
     const st = this.state, o = this.offer();
     if (st.view !== 'offer' || !o) return { what: 'new' };
+    if (st.tab === 'doc' && this.isDocKind(o)) return { what: 'doc' };
     if (st.tab === 'pages' && o.pages.length) return { what: 'page', i: Math.min(st.pageIdx, o.pages.length - 1) };
     if (st.tab === 'emails' && o.emails.length) return { what: 'email', i: Math.min(st.emailIdx, o.emails.length - 1) };
     return { what: 'offer' };
@@ -485,7 +552,7 @@ class Component extends DCLogic {
     const o = this.offer(); if (!o) return [];
     const notes = ((o.strategy || {}).assumptions || []).map((t) => 'Confirm: ' + t);
     const seen = {}; const find = (v) => { if (typeof v === 'string') (v.match(/\[[^\]\n]{2,60}\]/g) || []).forEach((m) => { seen[m] = 1; }); else if (v && typeof v === 'object') Object.values(v).forEach(find); };
-    find((o.pages || []).map((p) => p.sections)); find((o.emails || []).map((e) => e.content));
+    find(o.doc || null); find((o.pages || []).map((p) => p.sections)); find((o.emails || []).map((e) => e.content));
     Object.keys(seen).slice(0, 6).forEach((m) => notes.push('Fill in: ' + m));
     return notes;
   }
@@ -494,15 +561,15 @@ class Component extends DCLogic {
       if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
       window.CatalystCreate.mount({ designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
         enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit,
-        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
+        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
         context: () => {
           const t = this.ccTarget(), o = this.offer(), O = this.O;
           if (t.what === 'new') { const c = this.campaign(this.formCampId()); return { kind: O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
-          const kind = t.what === 'page' ? 'Landing page: ' + o.pages[t.i].title : t.what === 'email' ? 'Email: ' + o.emails[t.i].name : O.offerById(o.kind).label;
+          const kind = t.what === 'doc' ? O.offerById(o.kind).label + ' (the document)' : t.what === 'page' ? 'Landing page: ' + o.pages[t.i].title : t.what === 'email' ? 'Email: ' + o.emails[t.i].name : O.offerById(o.kind).label;
           return { kind, campaign: o.campaignName || '' };
         },
         modes: ['writing'],
-        snapshot: () => { const st = this.state, o = this.offer(); return JSON.stringify({ view: st.view, offerId: st.offerId, tab: st.tab, pageIdx: st.pageIdx, emailIdx: st.emailIdx, note: st.note, emNote: st.emNote, ids: st.offers.map((x) => x.id), offer: o }); },
+        snapshot: () => { const st = this.state, o = this.offer(); return JSON.stringify({ view: st.view, offerId: st.offerId, tab: st.tab, pageIdx: st.pageIdx, emailIdx: st.emailIdx, note: st.note, emNote: st.emNote, docNote: st.docNote, ids: st.offers.map((x) => x.id), offer: o }); },
         restore: (snap) => {
           let x = null; try { x = JSON.parse(snap); } catch (e) { return; }
           this._ccGen = (this._ccGen || 0) + 1;   // any run still going stops at its next step
@@ -516,6 +583,7 @@ class Component extends DCLogic {
           const t = this.ccTarget(); this.setState({ busy: true, err: '', field: null, delAsk: false });
           try {
             if (t.what === 'new') { await this.planNew(alive); await this.buildOffer(alive); }
+            else if (t.what === 'doc') await this.rewriteDoc(alive);
             else if (t.what === 'page') await this.rewritePage(t.i, alive);
             else if (t.what === 'email') await this.rewriteEmailAt(t.i, alive);
             else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note) await this.replanOffer(note, alive); await this.buildOffer(alive); }
@@ -640,12 +708,13 @@ class Component extends DCLogic {
   };
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
-    const files = {}; o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
+    const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind });
+    o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
     o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText({ ...e.content, cta: this.ctaOf(o, e).text }, { brand: b, esp: o.esp, href: this.ctaOf(o, e).url }); });
     const st = o.strategy || {};
     files['send-schedule.csv'] = 'Order,Email,Subject,When,To,Goal\n' + o.emails.map((e, i) => [i + 1, e.name, (e.content || {}).subject || '', e.when, e.to, e.goal].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
     files['strategy.md'] = '# ' + (st.title || o.name) + '\n\n' + O.label + (o.campaignName ? ' · Campaign: ' + o.campaignName : '') + '\n\n' + (st.summary || '') + '\n\n## Objective\n' + ((st.objective || {}).text || '') + '\n\nWhy: ' + ((st.objective || {}).why || '') + '\n\n## Audience\n' + ((st.audience || {}).text || '') + '\n\nPain: ' + ((st.audience || {}).pain || '') + '\n\nWhy: ' + ((st.audience || {}).why || '') + '\n\n## Angle\n' + ((st.angle || {}).text || '') + '\n\nWhy: ' + ((st.angle || {}).why || '') + '\n\n## Why this offer fits\n' + (st.fit || '') + '\n\n## Landing pages\n' + (st.pages || []).map((p) => '- ' + p.key + ': ' + p.job + ' (why: ' + p.why + ')').join('\n') + '\n\n## Emails\n' + (st.emails || []).map((e, i) => (i + 1) + '. ' + e.name + ' — ' + e.when + ', to ' + e.to + ': ' + e.goal + ' (why: ' + e.why + ')').join('\n') + '\n\n## Metrics\n' + (st.metrics || []).map((m) => '- ' + m.name + ': ' + m.target + ' — ' + m.why).join('\n') + '\n\n## Assumptions to confirm\n' + (st.assumptions || []).map((x) => '- ' + x).join('\n') + '\n\n## Risks\n' + (st.risks || []).map((x) => '- ' + x).join('\n') + '\n';
-    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\nlanding-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
+    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\n' + (o.doc ? 'document/: the ' + O.noun + ' itself (open it in a browser; for the PDF use Download PDF on its tab).\n' : '') + 'landing-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
     try { const blob = await this.D.zipOffer(o, files); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (o.name || 'content-offer').replace(/[^\w-]+/g, '-').toLowerCase() + '.zip'; document.body.appendChild(a); a.click(); a.remove(); }
     catch (e) { this.setState({ err: 'Could not make the download: ' + (e && e.message || e) }); }
   };
@@ -702,10 +771,10 @@ class Component extends DCLogic {
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;
-    const tab = st.tab, tabDef = [['strategy', 'Strategy', o.strategyApproved ? '✓' : 'Review'], ['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['launch', 'Launch', '']];
+    const isDoc = this.isDocKind(o), tab = st.tab === 'doc' && !isDoc ? 'strategy' : st.tab, tabDef = [['strategy', 'Strategy', o.strategyApproved ? '✓' : 'Review']].concat(isDoc ? [['doc', O.offerById(o.kind).label, o.doc ? (o.doc.approved ? '✓' : 'Review') : '']] : [], [['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['launch', 'Launch', '']]);
     Object.assign(vals, { offerName: o.name || 'Content offer', offerMeta: O.offerById(o.kind).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
       tabs: tabDef.map(([id, label, badge]) => ({ label, selected: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id, field: null }), style: btnTab(tab === id), badge, badgeStyle: badge ? 'margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:2px 8px;' + (tab === id ? 'background:#FFFFFF;color:#081A53;' : 'background:#F1EBFF;color:#3B1A8F;') : 'display:none;' })),
-      tabStrategy: tab === 'strategy', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch' });
+      tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch' });
 
     // Strategy
     const D = (label, x, extra) => ({ label, text: (x && x.text) || '—', extra: extra || '', why: (x && x.why) || '—', source: (x && x.source) || '' });
@@ -719,6 +788,18 @@ class Component extends DCLogic {
       planEmails: (s.emails || []).map((e, i) => ({ n: i + 1, name: e.name, when: e.when, to: e.to, goal: e.goal, why: e.why || '—', removeLabel: 'Remove the ' + e.name + ' email', remove: () => this.update((x) => { x.strategy.emails = x.strategy.emails.filter((_, j) => j !== i); x.strategyApproved = null; return x; }) })),
       metrics: (s.metrics || []).map((m) => m), assumptions: (s.assumptions || []).map((t) => ({ text: t })), risks: (s.risks || []).map((t) => ({ text: t })),
       noteVal: st.note, setNote: (e) => this.setState({ note: e.target.value }) });
+
+    // The white paper or guide itself
+    const dk = o.doc, dNoun = O.offerById(o.kind).noun, dBrand = this.D.siteBrand();
+    if (tab === 'doc') { const ck = JSON.stringify([dk, o.kind, dBrand.primary, dBrand.secondary, dBrand.accent, dBrand.logo, dBrand.logoWhite, dBrand.head, dBrand.body, (dBrand.images || [])[0]]);
+      if (!this._docCache || this._docCache.k !== ck) this._docCache = { k: ck, html: dk ? this.Dk.renderDoc(dk, dBrand, { kind: o.kind, editable: true }) : '' }; }
+    Object.assign(vals, { docNoun: dNoun, docLabel: O.offerById(o.kind).label, hasDoc: !!dk, noDoc: !dk, docWriting: !dk && st.busy, docIdle: !dk && !st.busy,
+      docSrc: tab === 'doc' && dk ? this._docCache.html : '', docFrameTitle: 'The ' + dNoun + ', page by page (click any text to edit it)',
+      docInfo: dk ? (st.docPages ? st.docPages + ' pages · ' : '') + (dk.sections || []).length + ' sections' + (dk.approved ? ' · Approved by ' + (dk.approved.by || 'you') : dk.by === 'person' ? ' · Edited by you' : ' · Written by CatalystOS') : '',
+      docApprovedAria: dk && dk.approved ? 'true' : 'false', docTrack: track(!!(dk && dk.approved)), docKnob: knob(!!(dk && dk.approved)),
+      toggleDoc: () => { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.D.recordApproval('doc', O.offerById(x.kind).label + ' · ' + (x.name || ''), x.doc); return x; }); },
+      docPdf: this.docPdf, docPdfLabel: st.docPdfBusy ? 'Making the PDF…' : 'Download PDF', docPdfBusy: !!st.docPdfBusy || !dk,
+      docNoteVal: st.docNote || '', setDocNote: (e) => this.setState({ docNote: e.target.value }) });
 
     // Landing pages
     const pi = Math.min(st.pageIdx, Math.max(0, nP - 1)), pg = o.pages[pi], b = this.pageBrand(o);
@@ -754,7 +835,7 @@ class Component extends DCLogic {
       emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
 
     // Launch
-    const left = (nP - apP) + (nE - apE);
+    const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0);
     Object.assign(vals, { isEventOffer: !!O.offerById(o.kind).event, openGraphics: this.openGraphics, gfxNote: st.gfxNote || '', gfxNoteOn: !!st.gfxNote, gfxNoun: O.offerById(o.kind).noun,
       gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
