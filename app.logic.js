@@ -23,6 +23,8 @@ const ICON_PATHS = {
 const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#5A12D6') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
 const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:10px;display:flex;align-items:center;justify-content:center;' + (on ? 'background:#6818F8;' : 'background:#F1EBFF;');
 
+// How many parts of an offer (the document, each landing page, each email) are written at the same time.
+const BUILD_AT_ONCE = 3;
 const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
@@ -231,23 +233,30 @@ class Component extends DCLogic {
     const opts = this.P.designOptions('offer', b.industry), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
     const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
     const emails = (st.emails || []).map((e) => ({ ...e, content: null, approved: null }));
-    let o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) ? { doc: null } : {}) });
-    if (this.isDocKind(o0)) {
-      if (this.state.tab === 'strategy') this.setState({ tab: 'doc', pageIdx: 0, emailIdx: 0 });
-      const doc = await this.D.writeOfferDoc({ offer: o, campaign: camp });
-      if (!alive()) throw this.stopped();
-      o = await this.updateOf(o.id, (x) => { x.doc = { ...doc, approved: null }; return x; }) || o;
-    } else if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
-    for (let i = 0; i < pages.length; i++) {
-      const sections = await this.D.writeOfferPage({ offer: o, key: pages[i].key, campaign: camp });
-      if (!alive()) throw this.stopped();
-      o = await this.updateOf(o.id, (x) => { x.pages[i].sections = sections; return x; }) || o;
-    }
-    for (let i = 0; i < emails.length; i++) {
-      const content = await this.D.writeOfferEmail({ offer: o, email: emails[i], index: i, campaign: camp });
-      if (!alive()) throw this.stopped();
-      o = await this.updateOf(o.id, (x) => { x.emails[i].content = content; return x; }) || o;
-    }
+    const o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) ? { doc: null } : {}) });
+    if (this.isDocKind(o0)) { if (this.state.tab === 'strategy') this.setState({ tab: 'doc', pageIdx: 0, emailIdx: 0 }); }
+    else if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
+    // The document, each landing page and each email only need the strategy, so they are written at the same time
+    // (BUILD_AT_ONCE at a time; each one still gets the Senior Writer's full checks). Each is saved as soon as it is
+    // done, one save at a time, so no save overwrites another. Run one after the other, a guide took about 17 minutes.
+    const tasks = [];
+    if (this.isDocKind(o0)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDoc({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
+    pages.forEach((p, i) => tasks.push({ what: 'the ' + p.title + ' page', go: () => this.D.writeOfferPage({ offer: o, key: p.key, campaign: camp }), put: (x, sections) => { if (x.pages[i]) x.pages[i].sections = sections; } }));
+    emails.forEach((e, i) => tasks.push({ what: 'email ' + (i + 1) + ' of ' + emails.length, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, content) => { if (x.emails[i]) x.emails[i].content = content; } }));
+    let saves = Promise.resolve(), done = 0, failed = null, next = 0;
+    const tell = () => { try { window.CatalystCreate && window.CatalystCreate.progress && window.CatalystCreate.progress(done + ' of ' + tasks.length + ' parts written'); } catch (e) {} };
+    const lane = async () => {
+      while (next < tasks.length && !failed && alive()) {
+        const t = tasks[next++];
+        try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(o.id, (x) => { t.put(x, out); return x; })); await saves; done++; tell(); }
+        catch (e) { failed = failed || e; }
+      }
+    };
+    tell();
+    await Promise.all(Array.from({ length: Math.min(BUILD_AT_ONCE, tasks.length) }, lane));
+    await saves;
+    if (failed) throw failed;
+    if (!alive()) throw this.stopped();
   }
   isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide'); }
   // The white paper or guide again (from its tab).
