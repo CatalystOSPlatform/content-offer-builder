@@ -601,7 +601,8 @@ class Component extends DCLogic {
           } finally { if (alive()) this.setState({ busy: false }); }
         },
         // Hands-off runs (the runner opens this app with ?cos_auto=1&client=…&campaign=…&kind=content-offer&title=…&brief=…).
-        autoKinds: ['content-offer'],
+        // A content funnel is the same build seen from the funnel side: the offer, its landing pages and its email sequence.
+        autoKinds: ['content-offer', 'content-funnel'],
         autoReady: () => this.state.boot !== 'loading' && (this.state.boot !== 'ready' || !!this.O),
         autoPrepare: (p) => this.ccAutoPrepare(p),
         autoSave: (p) => this.ccAutoSave(p),
