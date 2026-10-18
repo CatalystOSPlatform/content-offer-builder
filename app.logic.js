@@ -5,8 +5,9 @@ const PILL = { review: ['Needs review', '#A11A1A', '#FDECEC'], approved: ['✓ A
 const pill = (k) => { const [, fg, bg] = PILL[k]; return 'display:inline-block;white-space:nowrap;margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:3px 9px;color:' + fg + ';background:' + bg + ';border:1px solid ' + fg + ';'; };
 const getPath = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o, path, v) => { const ks = path.split('.'); const root = JSON.parse(JSON.stringify(o || {})); let cur = root; ks.slice(0, -1).forEach((k, i) => { if (cur[k] == null) cur[k] = /^\d+$/.test(ks[i + 1]) ? [] : {}; cur = cur[k]; }); cur[ks[ks.length - 1]] = v; return root; };
-const track = (on) => 'position:relative;width:40px;height:22px;border:0;padding:0;border-radius:999px;cursor:pointer;flex:none;background:' + (on ? '#1A7F43' : '#5E6475') + ';';
-const knob = (on) => 'position:absolute;top:3px;left:' + (on ? 21 : 3) + 'px;width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s;';
+// The CatalystOS Approve toggle (Style Guide → Approve toggle): 36 × 20 switch, #2E9E5B on, #7A8199 off, white knob.
+const track = (on) => 'position:relative;width:36px;height:20px;border:0;padding:0;border-radius:999px;cursor:pointer;flex:none;transition:background .2s;background:' + (on ? '#2E9E5B' : '#7A8199') + ';';
+const knob = (on) => 'position:absolute;top:2px;left:' + (on ? 18 : 2) + 'px;width:16px;height:16px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(8,26,83,.3);transition:left .2s;';
 const btnTab = (on) => 'display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:9px;font:800 13px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
 const EM_FIELDS = [['subject', 'Subject line', 1], ['preheader', 'Preview text', 1], ['eyebrow', 'Eyebrow', 1], ['headline', 'Headline', 1], ['body', 'Body', 7], ['bullets', 'Bullet points (one per line)', 4], ['cta', 'Button text (every email has one)', 1], ['ctaUrl', 'Button link (blank = the landing page)', 1], ['ps', 'P.S. (optional)', 2]];
 // Scroll a laptop or phone preview (the arrows to its right).
