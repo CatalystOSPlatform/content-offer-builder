@@ -102,6 +102,8 @@ class Component extends DCLogic {
     const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.Dk.renderDoc(o.doc, this.D.siteBrand(), { kind: o.kind }); document.body.appendChild(fr);
     await Promise.race([loaded, wait(8000)]); const d = fr.contentDocument;
     try { await Promise.race([d.fonts && d.fonts.ready, wait(3000)]); } catch (e) {}
+    // the Brand Command heading and body fonts are loaded before the pages are drawn, so the PDF and its thumbnail match
+    try { const B = this.D.siteBrand(); await Promise.race([Promise.all([B.head, B.body, B.accentFont].filter(Boolean).flatMap((f) => [400, 700].map((w) => d.fonts.load(w + ' 20px "' + f + '"').catch(() => null)))), wait(6000)]); } catch (e) {}
     await Promise.all([].map.call(d.querySelectorAll('img'), (im) => (im.complete ? 0 : Promise.race([new Promise((r) => { im.onload = im.onerror = r; }), wait(6000)]))));
     for (let i = 0; i < 40 && !d.querySelector('#flow .pg'); i++) await wait(100);
     await wait(300); return fr;
