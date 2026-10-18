@@ -246,7 +246,7 @@ class Component extends DCLogic {
     const o0 = this.offer(), st = o0.strategy || {}, camp = this.campaign(o0.campaignId), O = this.O.offerById(o0.kind), doc = this.isDocKind(o0);
     const post = /download|registered|attended|signed up|requested|watched|converted/i, promo = (st.emails || []).filter((e) => !post.test(e.to || '') || /^invite/.test(e.key || ''));
     const keepEvent = O.event ? (st.emails || []).filter((e) => !promo.includes(e)) : [];
-    const opts = this.P.designOptions('offer', this.D.siteBrand().industry), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind))] || opts[0];
+    const opts = this.P.designOptions('offer', this.D.siteBrand().industry, 6, this.D.siteBrand().aesthetic), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind))] || opts[0];
     const emails0 = promo.map((e) => ({ ...e, role: 'promotion', content: null, approved: null })).concat(keepEvent.map((e) => ({ ...e, role: 'event', content: null, approved: null })));
     let o = await this.persist({ ...o0, conv: true, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 0, option: d0.id }, pages: [{ key: 'lp', title: 'Landing page', slug: 'index', sections: [], approved: null }, { key: 'lpthanks', title: 'Thank you', slug: 'thank-you', sections: [], approved: null }], emails: emails0, ...(doc ? { doc: null } : {}), conversion: null });
     this.setState({ tab: doc ? 'doc' : 'pages', pageIdx: 0, emailIdx: 0 });
@@ -276,7 +276,7 @@ class Component extends DCLogic {
     const input = { brand: this.D.conversionBrand(), campaign: camp ? { ...camp } : {}, design: { style: (o.design || {}).style },
       offer: { id: o.id, app: this.D.APP, openUrl: this.D.offerOpenUrl(o.id), kind: typeId, title: st.title || o.title || o.name, topic: o.topic, doc: o.doc, strategy: st, speakers: o.speakers, people: o.people, date: o.date, time: o.time, where: o.where, videoUrl: o.videoUrl, fileUrl: o.fileUrl, nextUrl: o.nextUrl, campaignId: o.campaignId, story: o.story, research: o.research },
       spec: o.spec || {}, settings: { formEndpoint: o.formUrl || '', fileUrl: o.fileUrl || '', ...((o.conversion || {}).settings || {}) }, mode: this._ccAuto ? 'autopilot' : 'collaborative' };
-    return this.CV.generate(input, this.D.conversionIO(camp));
+    return this.CV.generate(input, this.D.conversionIO(camp, o));
   }
   // The offer as the conversion renderer and scorecard see it: the Launch tab's form address and the PDF link win.
   convSite(o) { const cv = o.conversion || {}, set = { ...(cv.settings || {}) }; if (o.formUrl) set.formEndpoint = o.formUrl; if (o.fileUrl) set.fileUrl = o.fileUrl; return { ...o, conversion: { ...cv, settings: set, offer: { ...(cv.offer || {}), nextUrl: o.nextUrl || (cv.offer || {}).nextUrl || '', videoUrl: o.videoUrl || (cv.offer || {}).videoUrl || '', date: o.date || (cv.offer || {}).date || '', time: o.time || (cv.offer || {}).time || '' } } }; }
@@ -286,7 +286,7 @@ class Component extends DCLogic {
     const o0 = this.offer(); if (!o0) throw new Error('No content offer is open.');
     if (o0.conv && this.CV) return this.buildConversionFunnel(alive);
     const st = o0.strategy || {}, b = this.D.siteBrand(), camp = this.campaign(o0.campaignId);
-    const opts = this.P.designOptions('offer', b.industry), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
+    const opts = this.P.designOptions('offer', b.industry, 6, b.aesthetic), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
     const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
     const emails = (st.emails || []).map((e) => ({ ...e, content: null, approved: null }));
     const o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) ? { doc: null } : {}) });
@@ -318,6 +318,7 @@ class Component extends DCLogic {
   // The white paper or guide again (from its tab).
   async rewriteDoc(alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    if (this.state.docNote && o.doc) this.D.learnRejected('doc', o.doc, this.state.docNote);
     const doc = await (this.state.docNote ? this.D.writeOfferDoc : this.D.writeOfferDocBest)({ offer: o, campaign: this.campaign(o.campaignId), note: this.state.docNote ? this.state.docNote.trim() : (o.doc ? 'Write a genuinely different version.' : '') });
     if (!alive()) throw this.stopped();
     await this.updateOf(o.id, (x) => { x.doc = { ...doc, approved: null }; return x; });
@@ -334,6 +335,7 @@ class Component extends DCLogic {
   // One email again (the email open on the Emails tab), with the person's note if they wrote one.
   async rewriteEmailAt(i, alive) {
     const o = this.offer(), em = o && o.emails[i]; if (!em) throw new Error('No email is open.');
+    if (em.content && this.state.emNote.trim()) this.D.learnRejected('email:' + em.key, em.content, this.state.emNote);
     const content = await this.D.writeOfferEmail({ offer: o, email: em, index: i, campaign: this.campaign(o.campaignId), note: this.state.emNote.trim() || (em.content ? 'Write a genuinely different version.' : '') });
     if (!alive()) throw this.stopped();
     await this.updateOf(o.id, (x) => { x.emails[i].content = content; x.emails[i].approved = null; return x; });
@@ -489,7 +491,7 @@ class Component extends DCLogic {
       video: { eyebrow: 'Webinar replay', heading: title, body: f.date.trim() ? 'Originally presented ' + f.date.trim() + '.' : 'Thanks for signing up. Enjoy the session.', chapters: [], videoUrl: (f.videoUrl || '').trim() },
       cta: { eyebrow: 'Next step', heading: 'Talk with ' + b.name, body: 'Questions about putting this to work? We’re happy to help.', cta: 'Get in touch' },
     };
-    const opts = this.P.designOptions('offer', b.industry), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
+    const opts = this.P.designOptions('offer', b.industry, 6, b.aesthetic), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
     const keys = O.pages, idx = Math.max(0, keys.indexOf(key));
     const site = { v: 2, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
       pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.O.sectionsFor(kind, k, this.K.PAGES).map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
@@ -619,11 +621,11 @@ class Component extends DCLogic {
 
     // Landing pages
     const pi = Math.min(st.pageIdx, Math.max(0, nP - 1)), pg = o.pages[pi], b = this.pageBrand(o);
-    const dOpts = this.P.designOptions('offer', b.industry);
+    const dOpts = this.P.designOptions('offer', b.industry, 6, b.aesthetic);
     Object.assign(vals, { noPages: !nP, hasPages: !!nP,
       pageTabs: o.pages.map((p, i) => ({ title: p.title, current: i === pi ? 'page' : 'false', pick: () => this.setState({ pageIdx: i, field: null }), style: btnTab(i === pi).replace('height:36px', 'height:34px'), pill: p.approved ? '✓' : p.sections.length ? '' : '…', pillStyle: p.approved ? 'margin-left:6px;color:' + (i === pi ? '#9BE3B0' : '#14663A') + ';' : p.sections.length ? 'display:none;' : 'margin-left:6px;' })),
       isWebinarOffer: o.kind === 'webinar' && pg && pg.key === 'offer' && !o.conversion, tplVal: o.tpl || 'editorial', tplOptions: this.W.WEBINAR_TEMPLATES.map((t) => ({ id: t.id, name: t.name })).concat([{ id: 'panels', name: 'Panels (choose a design)' }]), setTpl: (e) => { const v = e.target.value; this.update((x) => { x.tpl = v; x.pages.forEach((p) => { if (p.key === 'offer') p.approved = null; }); return x; }); },
-      designVal: (o.design || {}).option || '', designOptions: dOpts.map((d) => ({ id: d.id, name: d.name })),
+      designVal: ((o.design && dOpts.find((d) => d.style === o.design.style && JSON.stringify(d.lay) === JSON.stringify(o.design.lay))) || {}).id || (o.design || {}).option || '', designOptions: dOpts.map((d) => ({ id: d.id, name: d.name })),
       setDesign: (e) => { const d = dOpts.find((x) => x.id === e.target.value); if (d) this.update((x) => { x.design = { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 1, option: d.id }; x.pages.forEach((p) => { p.approved = null; p.sections.forEach((sc) => { delete sc.layout; delete sc.solid; }); }); return x; }); },
       isLaptop: st.dev !== 'phone', isPhone: st.dev === 'phone', lapPressed: st.dev !== 'phone' ? 'true' : 'false', phPressed: st.dev === 'phone' ? 'true' : 'false',
       setLaptop: () => this.setState({ dev: 'laptop' }), setPhone: () => this.setState({ dev: 'phone' }),
