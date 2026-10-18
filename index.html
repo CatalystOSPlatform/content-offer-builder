@@ -216,6 +216,13 @@
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Email service</span><select value="{{ espVal }}" onChange="{{ setEsp }}" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 8px; font: 600 13px 'Public Sans', sans-serif;"><sc-for list="{{ espOptions }}" as="eo" hint-placeholder-count="3"><option value="{{ eo.id }}">{{ eo.name }}</option></sc-for></select></label>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Where the landing page will live (for email buttons)</span><input value="{{ urlVal }}" onInput="{{ setUrl }}" placeholder="https://yoursite.com/offer" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Form address (where sign-ups go)</span><input value="{{ formVal }}" onInput="{{ setForm }}" placeholder="Your form service’s URL (optional)" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<sc-if value="{{ isConv }}" hint-placeholder-val="{{ false }}">
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ fileLabel }}</span><input value="{{ fileVal }}" onInput="{{ setFile }}" placeholder="https://…" style="height: 38px; border-radius: 9px; border: 1px solid #8B909C; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Privacy policy link</span><input value="{{ privacyVal }}" onInput="{{ setPrivacy }}" placeholder="https://yoursite.com/privacy" style="height: 38px; border-radius: 9px; border: 1px solid #8B909C; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Next-step link on the thank-you page</span><input value="{{ nextVal }}" onInput="{{ setNext }}" placeholder="https://yoursite.com/contact" style="height: 38px; border-radius: 9px; border: 1px solid #8B909C; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+<sc-if value="{{ convNeedsReview }}" hint-placeholder-val="{{ false }}"><button type="button" role="switch" aria-checked="{{ convReviewed }}" onClick="{{ toggleConvReviewed }}" style="align-self: flex-start; border: 1px solid #C9CDD8; background: #FFFFFF; border-radius: 9px; padding: 8px 12px; font: 600 13px 'Public Sans', sans-serif; color: #14182B; cursor: pointer;">A qualified person reviewed the landing page’s claims and disclosures: {{ convReviewedText }}</button></sc-if>
+<div role="status" style="border-radius: 10px; padding: 10px 12px; background: {{ convBg }}; color: {{ convFg }}; font-size: 13px; line-height: 1.5;"><strong>{{ convTitle }}</strong><ul style="margin: 4px 0 0; padding-left: 18px;"><sc-for list="{{ convBlockers }}" as="cb" hint-placeholder-count="2"><li>{{ cb.t }}</li></sc-for></ul></div>
+</sc-if>
 <sc-if value="{{ notAllApproved }}" hint-placeholder-val="{{ true }}"><p style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">{{ approvalNote }}</p></sc-if>
 <button data-cos-download="" type="button" onClick="{{ download }}" disabled="{{ cantDownload }}" style-hover="background: linear-gradient(180deg,#2B3F8C 0%,#13266E 100%);" style="align-self: flex-start; height: 40px; padding: 0 18px; border-radius: 10px; border: none; font: 800 14px Manrope, sans-serif; cursor: pointer; background: linear-gradient(180deg,#1B2C6B 0%,#081A53 100%); color: #FFFFFF; box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -2px 3px rgba(0,0,20,0.35);">Download all files (.zip)</button>
 </div>
@@ -290,7 +297,7 @@ const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 
 
 // How many parts of an offer (the document, each landing page, each email) are written at the same time.
 const BUILD_AT_ONCE = 3;
-const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial' };
+const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
     form: { ...FORM0 },
@@ -316,7 +323,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js');
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CV = await this.D.loadConversion();
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -347,6 +354,7 @@ class Component extends DCLogic {
   async persist(o) {
     const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS create this" made and then undid
     if (dead()) return o;
+    if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
     try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); this.thumbLater(s2); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
   }
@@ -475,7 +483,7 @@ class Component extends DCLogic {
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
   async planNew(alive) {
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     const strategy = await this.D.planOffer({ offer: base, campaign: camp });
     if (!alive()) throw this.stopped();
     const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
@@ -490,10 +498,62 @@ class Component extends DCLogic {
     await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
     this.setState({ note: '' });
   }
+  // Progress for hands-off runs: time-only words, never what is being made or how much of it (Erika, Oct 18).
+  tellProgress(done, all) { try { window.CatalystCreate && window.CatalystCreate.progress && window.CatalystCreate.progress(done * 2 >= all ? 'Almost there…' : 'Working on it…'); } catch (e) {} }
+  // Runs tasks [{ go, put }] BUILD_AT_ONCE at a time, each saved as soon as it is done, one save at a time.
+  async runTasks(id, tasks, alive, count) {
+    let saves = Promise.resolve(), failed = null, next = 0;
+    const lane = async () => { while (next < tasks.length && !failed && alive()) { const t = tasks[next++]; try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(id, (x) => { t.put(x, out); return x; })); await saves; count.done++; this.tellProgress(count.done, count.all); } catch (e) { failed = failed || e; } } };
+    await Promise.all(Array.from({ length: Math.min(BUILD_AT_ONCE, tasks.length) }, lane)); await saves;
+    if (failed) throw failed;
+  }
+  // The content funnel with the Web Builder's conversion engine: (1) the offer piece itself (the white paper, guide or case
+  // study; a webinar or workshop is the event this offer plans) together with the promotion emails, (2) the landing page and
+  // thank-you page, written from the finished piece, (3) the follow-up emails from the engine's nurture plan.
+  // Everything is saved on this offer (one Saved Files entry for the campaign), each part as soon as it is done.
+  async buildConversionFunnel(alive) {
+    const o0 = this.offer(), st = o0.strategy || {}, camp = this.campaign(o0.campaignId), O = this.O.offerById(o0.kind), doc = this.isDocKind(o0);
+    const post = /download|registered|attended|signed up|requested|watched|converted/i, promo = (st.emails || []).filter((e) => !post.test(e.to || '') || /^invite/.test(e.key || ''));
+    const keepEvent = O.event ? (st.emails || []).filter((e) => !promo.includes(e)) : [];
+    const opts = this.P.designOptions('offer', this.D.siteBrand().industry), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind))] || opts[0];
+    const emails0 = promo.map((e) => ({ ...e, role: 'promotion', content: null, approved: null })).concat(keepEvent.map((e) => ({ ...e, role: 'event', content: null, approved: null })));
+    let o = await this.persist({ ...o0, conv: true, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 0, option: d0.id }, pages: [{ key: 'lp', title: 'Landing page', slug: 'index', sections: [], approved: null }, { key: 'lpthanks', title: 'Thank you', slug: 'thank-you', sections: [], approved: null }], emails: emails0, ...(doc ? { doc: null } : {}), conversion: null });
+    this.setState({ tab: doc ? 'doc' : 'pages', pageIdx: 0, emailIdx: 0 });
+    const count = { done: 0, all: (doc ? 1 : 0) + 1 + emails0.length + (O.event ? 0 : 4) };
+    this.tellProgress(0, count.all);
+    // 1. the piece and the promotion emails
+    const t1 = []; if (doc) t1.push({ go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, d) => { x.doc = { ...d, approved: null }; } });
+    emails0.forEach((e, i) => t1.push({ go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, c) => { if (x.emails[i]) x.emails[i].content = c; } }));
+    await this.runTasks(o.id, t1, alive, count); if (!alive()) throw this.stopped();
+    // 2. the landing page and thank-you page from the finished piece
+    o = this.state.offers.find((x) => x.id === o.id) || o;
+    const conv = await this.makeConversion(o, camp); if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.pages = conv.pages.map((p) => ({ ...p, approved: null })); x.conversion = conv.conversion; return x; }); count.done++; this.tellProgress(count.done, count.all);
+    // 3. the follow-up emails (events keep their registration, reminder and follow-up emails from the strategy)
+    if (!O.event) {
+      o = this.state.offers.find((x) => x.id === o.id) || o; const base = o.emails.length;
+      const nurture = (conv.conversion.nurture || []).map((e) => ({ key: e.key, name: e.name, when: e.when, to: e.to, goal: e.goal + ' ' + e.rules, why: 'The landing page’s follow-up plan (' + e.role + ').', role: e.role, consent: e.consent, content: null, approved: null }));
+      await this.updateOf(o.id, (x) => { x.emails = x.emails.concat(nurture); x.strategy = { ...x.strategy, emails: (x.strategy.emails || []).filter((e) => promo.some((p) => p.key === e.key)).concat(nurture.map(({ content, approved, ...e }) => e)) }; return x; });
+      o = this.state.offers.find((x) => x.id === o.id) || o;
+      await this.runTasks(o.id, nurture.map((e, k) => ({ go: () => this.D.writeOfferEmail({ offer: o, email: e, index: base + k, campaign: camp }), put: (x, c) => { if (x.emails[base + k]) x.emails[base + k].content = c; } })), alive, count);
+    }
+    if (!alive()) throw this.stopped();
+  }
+  // The conversion engine's pages for this offer (its document, strategy, speakers and the campaign).
+  async makeConversion(o, camp) {
+    const st = o.strategy || {}, typeId = o.kind === 'replay' ? 'ondemand' : o.kind;
+    const input = { brand: this.D.conversionBrand(), campaign: camp ? { ...camp } : {}, design: { style: (o.design || {}).style },
+      offer: { id: o.id, app: this.D.APP, openUrl: this.D.offerOpenUrl(o.id), kind: typeId, title: st.title || o.title || o.name, topic: o.topic, doc: o.doc, strategy: st, speakers: o.speakers, people: o.people, date: o.date, time: o.time, where: o.where, videoUrl: o.videoUrl, fileUrl: o.fileUrl, nextUrl: o.nextUrl, campaignId: o.campaignId, story: o.story, research: o.research },
+      spec: o.spec || {}, settings: { formEndpoint: o.formUrl || '', fileUrl: o.fileUrl || '', ...((o.conversion || {}).settings || {}) }, mode: this._ccAuto ? 'autopilot' : 'collaborative' };
+    return this.CV.generate(input, this.D.conversionIO(camp));
+  }
+  // The offer as the conversion renderer and scorecard see it: the Launch tab's form address and the PDF link win.
+  convSite(o) { const cv = o.conversion || {}, set = { ...(cv.settings || {}) }; if (o.formUrl) set.formEndpoint = o.formUrl; if (o.fileUrl) set.fileUrl = o.fileUrl; return { ...o, conversion: { ...cv, settings: set, offer: { ...(cv.offer || {}), nextUrl: o.nextUrl || (cv.offer || {}).nextUrl || '', videoUrl: o.videoUrl || (cv.offer || {}).videoUrl || '', date: o.date || (cv.offer || {}).date || '', time: o.time || (cv.offer || {}).time || '' } } }; }
   // The landing pages (in the offer's panel design) and the emails, saved as they're written.
   async buildOffer(alive) {
     if (!alive()) throw this.stopped();
     const o0 = this.offer(); if (!o0) throw new Error('No content offer is open.');
+    if (o0.conv && this.CV) return this.buildConversionFunnel(alive);
     const st = o0.strategy || {}, b = this.D.siteBrand(), camp = this.campaign(o0.campaignId);
     const opts = this.P.designOptions('offer', b.industry), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
     const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
@@ -505,11 +565,11 @@ class Component extends DCLogic {
     // (BUILD_AT_ONCE at a time; each one still gets the Senior Writer's full checks). Each is saved as soon as it is
     // done, one save at a time, so no save overwrites another. Run one after the other, a guide took about 17 minutes.
     const tasks = [];
-    if (this.isDocKind(o0)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDoc({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
+    if (this.isDocKind(o0)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
     pages.forEach((p, i) => tasks.push({ what: 'the ' + p.title + ' page', go: () => this.D.writeOfferPage({ offer: o, key: p.key, campaign: camp }), put: (x, sections) => { if (x.pages[i]) x.pages[i].sections = sections; } }));
     emails.forEach((e, i) => tasks.push({ what: 'email ' + (i + 1) + ' of ' + emails.length, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, content) => { if (x.emails[i]) x.emails[i].content = content; } }));
     let saves = Promise.resolve(), done = 0, failed = null, next = 0;
-    const tell = () => { try { window.CatalystCreate && window.CatalystCreate.progress && window.CatalystCreate.progress(done + ' of ' + tasks.length + ' parts written'); } catch (e) {} };
+    const tell = () => this.tellProgress(done, tasks.length);
     const lane = async () => {
       while (next < tasks.length && !failed && alive()) {
         const t = tasks[next++];
@@ -523,11 +583,11 @@ class Component extends DCLogic {
     if (failed) throw failed;
     if (!alive()) throw this.stopped();
   }
-  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide'); }
+  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide' || o.kind === 'casestudy'); }
   // The white paper or guide again (from its tab).
   async rewriteDoc(alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
-    const doc = await this.D.writeOfferDoc({ offer: o, campaign: this.campaign(o.campaignId), note: this.state.docNote ? this.state.docNote.trim() : (o.doc ? 'Write a genuinely different version.' : '') });
+    const doc = await (this.state.docNote ? this.D.writeOfferDoc : this.D.writeOfferDocBest)({ offer: o, campaign: this.campaign(o.campaignId), note: this.state.docNote ? this.state.docNote.trim() : (o.doc ? 'Write a genuinely different version.' : '') });
     if (!alive()) throw this.stopped();
     await this.updateOf(o.id, (x) => { x.doc = { ...doc, approved: null }; return x; });
     this.setState({ docNote: '' });
@@ -535,6 +595,7 @@ class Component extends DCLogic {
   // One landing page again (the page open on the Landing pages tab).
   async rewritePage(i, alive) {
     const o = this.offer(), pg = o && o.pages[i]; if (!pg) throw new Error('No landing page is open.');
+    if (o.conversion && this.CV) { const r = await this.makeConversion(o, this.campaign(o.campaignId)); if (!alive()) throw this.stopped(); await this.updateOf(o.id, (x) => { x.pages = r.pages.map((p) => ({ ...p, approved: null })); x.conversion = { ...r.conversion, settings: { ...r.conversion.settings, ...((x.conversion || {}).settings || {}) } }; return x; }); return; }
     const sections = await this.D.writeOfferPage({ offer: o, key: pg.key, campaign: this.campaign(o.campaignId) });
     if (!alive()) throw this.stopped();
     await this.updateOf(o.id, (x) => { x.pages[i].sections = sections; x.pages[i].approved = null; return x; });
@@ -564,6 +625,9 @@ class Component extends DCLogic {
     const seen = {}; const find = (v) => { if (typeof v === 'string') (v.match(/\[[^\]\n]{2,60}\]/g) || []).forEach((m) => { seen[m] = 1; }); else if (v && typeof v === 'object') Object.values(v).forEach(find); };
     find(o.doc || null); find((o.pages || []).map((p) => p.sections)); find((o.emails || []).map((e) => e.content));
     Object.keys(seen).slice(0, 6).forEach((m) => notes.push('Fill in: ' + m));
+    // In a hands-off run the document's PDF is linked when it is saved (ccAutoSave), so that blocker is reported there instead.
+    if (o.conversion && this.CV) { const R = this.CV.scorecard(this.convSite(o), this.D.siteBrand()); (R.blockers || []).filter((b) => !(this._ccAuto && o.doc && /isn’t linked yet/.test(b))).forEach((b) => notes.push('Before publishing the landing page: ' + b)); (R.notes || []).forEach((b) => notes.push(b)); }
+    if (this.O.offerById(o.kind).event) notes.push('Make the event graphics (Zoom slides, banners, posts) from the Launch tab: Open the Event Graphics Builder.');
     return notes;
   }
   cosCreateMount() {
@@ -607,7 +671,7 @@ class Component extends DCLogic {
         autoReady: () => this.state.boot !== 'loading' && (this.state.boot !== 'ready' || !!this.O),
         autoPrepare: (p) => this.ccAutoPrepare(p),
         autoSave: (p) => this.ccAutoSave(p),
-        autoPdf: () => this.offerPdf(this._pdfOffer),
+        autoPdf: () => (this._pdfDone ? null : this.offerPdf(this._pdfOffer)), // already in Saved Files when the thank-you page links to it
       });
     };
     go();
@@ -625,24 +689,33 @@ class Component extends DCLogic {
     }
     const words = ((p.title || '') + ' ' + (p.brief || '')).toLowerCase();
     let spec = {}; try { spec = JSON.parse(p.spec || '{}') || {}; } catch (e) {}
-    const specKind = { 'guide or checklist': 'guide', 'white paper or report': 'whitepaper', webinar: 'webinar', workshop: 'workshop', 'webinar replay': 'replay' }[String(spec.offerType || '').toLowerCase()];
-    const kind = specKind ? specKind : /replay|on[- ]demand|recording/.test(words) ? 'replay' : /webinar/.test(words) ? 'webinar' : /workshop|masterclass|bootcamp/.test(words) ? 'workshop' : /white ?paper|report|research/.test(words) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(words) ? 'guide' : 'whitepaper';
+    // The kind of offer: the piece's details first, then the campaign's Offer field, then the words of the title and brief.
+    const camp0 = this.campaign(p.campaign), ot = String(spec.offerType || '').toLowerCase();
+    const specKind = { 'guide or checklist': 'guide', 'white paper or report': 'whitepaper', webinar: 'webinar', workshop: 'workshop', 'webinar replay': 'replay', 'case study': 'casestudy', ebook: 'guide', checklist: 'guide', 'research report': 'whitepaper', report: 'whitepaper', 'white paper': 'whitepaper', guide: 'guide' }[ot];
+    const fromWords = (t) => (/replay|on[- ]demand|recording/.test(t) ? 'replay' : /webinar/.test(t) ? 'webinar' : /workshop|masterclass|bootcamp/.test(t) ? 'workshop' : /case stud|success stor/.test(t) ? 'casestudy' : /white ?paper|report|research/.test(t) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(t) ? 'guide' : '');
+    const kind = specKind || fromWords(String((camp0 && camp0.offer) || '').toLowerCase()) || fromWords(words) || 'whitepaper';
     this._ccAuto = { title: String(p.title || '').trim() };
     await new Promise((r) => this.setState({ view: 'new', offerId: null, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', note: '', emDraft: null, emNote: '', delAsk: false, zoom: null, seqEdit: null,
-      form: { ...FORM0, kind, title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
+      form: { ...FORM0, kind, story: String(p.story || '').slice(0, 6000), research: String(p.research || '').slice(0, 8000), date: String(spec.eventDate || ''), time: [spec.eventTime, spec.eventTimezone].filter(Boolean).join(' '), speakers: Array.isArray(spec.speakers) ? spec.speakers.slice(0, 6) : [], title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
   }
   // Save exactly as the app does (the offer, then its Saved Files entry with the campaign), waited for; first landing page as the thumbnail.
   async ccAutoSave(p) {
     const cur = this.offer(); if (!cur) throw new Error('No content offer was made.');
     const o = { ...cur, name: String(p.title || '').trim() || cur.name, campaignId: p.campaign || cur.campaignId || null };
     if (p.campaign && o.campaignId !== cur.campaignId) { const c = this.campaign(p.campaign); o.campaignName = c ? c.name : ''; }
+    // The document's PDF goes to Saved Files first, so the thank-you page and the delivery email link to the real file.
+    let pdfUrl = '', pdfThumb = ''; this._pdfDone = false;
+    if (o.doc && o.conversion && !this.D.PREVIEW) { try { const x = await this.offerPdf(o); const sf = await import(this.D.PILOT + 'saved-files.js'); const ex = await sf.setExport(this.D.clientId(), this.D.APP, o.id, x.blob, x.thumb || ''); pdfUrl = (ex && ex.pdfUrl) || ''; pdfThumb = (ex && ex.thumb) || ''; if (pdfUrl) { o.fileUrl = pdfUrl; o.conversion = { ...o.conversion, settings: { ...(o.conversion.settings || {}), fileUrl: pdfUrl } }; this._pdfDone = true; } } catch (e) { console.warn('offer PDF', e); } }
+    if (o.conversion && this.CV) { try { o.conversion = { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) }; } catch (e) {} }
+    if (this.O.offerById(o.kind).event) { try { o.graphicsUrl = (await this.D.eventGraphicsUrl({ ...o, date: o.date, time: o.time }, (o.strategy || {}).title || o.name)).split('#')[0]; } catch (e) {} }
     const cid = this.D.clientId(), s2 = await this.D.saveOffer(o);
     this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' }));
     let thumb = ''; try { thumb = await this.shotOffer(s2); } catch (e) {}
     await this.D.indexSaveNow(s2, cid, thumb);
     this._ccAuto = null;
     this._pdfOffer = s2;
-    return { app: this.D.APP, ref: s2.id, title: s2.name || 'Content offer', thumb, openUrl: this.D.offerOpenUrl(s2.id, cid) };
+    const notes = o.doc && o.conversion && !pdfUrl ? ['Before publishing the landing page: the ' + this.O.offerById(o.kind).noun + '’s PDF couldn’t be linked automatically. Download it from its tab and add its link on the Launch tab.'] : [];
+    return { app: this.D.APP, ref: s2.id, title: s2.name || 'Content offer', thumb: thumb || pdfThumb, openUrl: this.D.offerOpenUrl(s2.id, cid), notes, ...(pdfUrl ? { pdfUrl } : {}) };
   }
 
   // Landing page editing: click text to edit; arrows step a panel's layout. Any change sends the page back to review.
@@ -707,7 +780,7 @@ class Component extends DCLogic {
   }
   ctaOf(o, em) { const d = this.O.ctaFor(o.kind, em.key, o); return { text: (em.content && em.content.cta) || d.text, url: (em.content && em.content.ctaUrl) || d.url || o.pageUrl || '#' }; }
   // Webinar main pages use the chosen template (Editorial, Horizon, Gallery); everything else uses the panel designs.
-  renderOfferPage(o, i, b, opts = {}) { const pg = o.pages[i]; if (o.kind === 'webinar' && o.tpl && o.tpl !== 'panels' && pg && pg.key === 'offer') return this.W.renderWebinar(o, i, b, { ...opts, tpl: o.tpl }); return this.K.renderPage(o, i, b, opts); }
+  renderOfferPage(o, i, b, opts = {}) { const pg = o.pages[i]; if (o.conversion) return this.CV ? this.CV.renderConversionPage(this.convSite(o), i, b, opts) : '<!doctype html><html lang="en"><body><p>The landing page designer couldn’t load. Please reload the page.</p></body></html>'; if (o.kind === 'webinar' && o.tpl && o.tpl !== 'panels' && pg && pg.key === 'offer') return this.W.renderWebinar(o, i, b, { ...opts, tpl: o.tpl }); return this.K.renderPage(o, i, b, opts); }
   emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   // Webinars and workshops: make the event graphics (Zoom slides, banners, LinkedIn post, newsletter) in the Event Graphics Builder.
@@ -721,6 +794,7 @@ class Component extends DCLogic {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
     const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind });
     o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
+    if (o.conversion && this.CV) files['landing-pages/conversion-plan.md'] = this.CV.planMarkdown(this.convSite(o));
     o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText({ ...e.content, cta: this.ctaOf(o, e).text }, { brand: b, esp: o.esp, href: this.ctaOf(o, e).url }); });
     const st = o.strategy || {};
     files['send-schedule.csv'] = 'Order,Email,Subject,When,To,Goal\n' + o.emails.map((e, i) => [i + 1, e.name, (e.content || {}).subject || '', e.when, e.to, e.goal].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
@@ -817,7 +891,7 @@ class Component extends DCLogic {
     const dOpts = this.P.designOptions('offer', b.industry);
     Object.assign(vals, { noPages: !nP, hasPages: !!nP,
       pageTabs: o.pages.map((p, i) => ({ title: p.title, current: i === pi ? 'page' : 'false', pick: () => this.setState({ pageIdx: i, field: null }), style: btnTab(i === pi).replace('height:36px', 'height:34px'), pill: p.approved ? '✓' : p.sections.length ? '' : '…', pillStyle: p.approved ? 'margin-left:6px;color:' + (i === pi ? '#9BE3B0' : '#14663A') + ';' : p.sections.length ? 'display:none;' : 'margin-left:6px;' })),
-      isWebinarOffer: o.kind === 'webinar' && pg && pg.key === 'offer', tplVal: o.tpl || 'editorial', tplOptions: this.W.WEBINAR_TEMPLATES.map((t) => ({ id: t.id, name: t.name })).concat([{ id: 'panels', name: 'Panels (choose a design)' }]), setTpl: (e) => { const v = e.target.value; this.update((x) => { x.tpl = v; x.pages.forEach((p) => { if (p.key === 'offer') p.approved = null; }); return x; }); },
+      isWebinarOffer: o.kind === 'webinar' && pg && pg.key === 'offer' && !o.conversion, tplVal: o.tpl || 'editorial', tplOptions: this.W.WEBINAR_TEMPLATES.map((t) => ({ id: t.id, name: t.name })).concat([{ id: 'panels', name: 'Panels (choose a design)' }]), setTpl: (e) => { const v = e.target.value; this.update((x) => { x.tpl = v; x.pages.forEach((p) => { if (p.key === 'offer') p.approved = null; }); return x; }); },
       designVal: (o.design || {}).option || '', designOptions: dOpts.map((d) => ({ id: d.id, name: d.name })),
       setDesign: (e) => { const d = dOpts.find((x) => x.id === e.target.value); if (d) this.update((x) => { x.design = { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 1, option: d.id }; x.pages.forEach((p) => { p.approved = null; p.sections.forEach((sc) => { delete sc.layout; delete sc.solid; }); }); return x; }); },
       isLaptop: st.dev !== 'phone', isPhone: st.dev === 'phone', lapPressed: st.dev !== 'phone' ? 'true' : 'false', phPressed: st.dev === 'phone' ? 'true' : 'false',
@@ -851,6 +925,13 @@ class Component extends DCLogic {
       gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
       urlVal: o.pageUrl || '', setUrl: (e) => { const v = e.target.value; this.update((x) => { x.pageUrl = v; return x; }); }, formVal: o.formUrl || '', setForm: (e) => { const v = e.target.value; this.update((x) => { x.formUrl = v; return x; }); },
+      ...(() => { if (!o.conversion || !this.CV) return { isConv: false }; const cs = this.convSite(o), R = this.CV.scorecard(cs, this.D.siteBrand()), T = this.CV.OFFER_TYPES[o.conversion.typeId] || {}, set = (cs.conversion.settings || {});
+        const setConv = (k) => (e) => { const v = e.target.value; this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), [k]: v } }; if (k === 'fileUrl') { x.fileUrl = v; if (T.video) x.videoUrl = v; } return x; }); };
+        return { isConv: true, fileLabel: T.video ? 'Recording link (shown on the thank-you page)' : T.event ? 'Join link or event page (optional)' : 'Download link for the ' + (T.noun || 'offer') + ' (the thank-you page and delivery email use it)', fileVal: o.fileUrl || set.fileUrl || '', setFile: setConv('fileUrl'), privacyVal: set.privacyUrl || '', setPrivacy: setConv('privacyUrl'),
+          nextVal: o.nextUrl || '', setNext: (e) => { const v = e.target.value; this.update((x) => { x.nextUrl = v; return x; }); },
+          convNeedsReview: !!(o.conversion.review && (R.blockers || []).some((b) => /reviewer|review by/i.test(b))) || !!set.complianceApproved, convReviewed: set.complianceApproved ? 'true' : 'false', convReviewedText: set.complianceApproved ? 'Yes' : 'Not yet',
+          toggleConvReviewed: () => this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), complianceApproved: !(x.conversion.settings || {}).complianceApproved } }; return x; }),
+          convTitle: (R.blockers || []).length ? 'Landing page review ' + R.score + '/100 · before publishing:' : 'Landing page review ' + R.score + '/100 · nothing is blocking publication.', convBlockers: (R.blockers || []).map((t) => ({ t })), convBg: (R.blockers || []).length ? '#FEF3F2' : '#E8F5EC', convFg: (R.blockers || []).length ? '#7A271A' : '#14532D' }; })(),
       notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS create this.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;
