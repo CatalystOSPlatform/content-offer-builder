@@ -52,7 +52,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CV = await this.D.loadConversion();
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CV = await this.D.loadConversion();
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -202,6 +202,29 @@ class Component extends DCLogic {
         await self.persist(copy); return copy.id; },
       async remove(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (o) await self.deleteOfferNow(ref); },
     };
+  }
+  // ---- a person's own colors (Erika, Oct 18): dashboard cos-color.js through lib/panels.js. Changing a background or its opacity
+  // sets the text back to Auto (white or dark by contrast); a picked text color that fails AA shows a warning. ----
+  ccModel(x, dBg, dFg, set) { const C = this.P && this.P.colorKit && this.P.colorKit(); if (!C) return { on: false }; const b = this.D.siteBrand(); x = x || {};
+    return C.controls({ palette: C.palette([b.primary, b.secondary, b.accent].concat(b.colors || [])), bg: x.bg || '', opacity: x.bgOp, fg: x.fg || '', defaultBg: dBg, defaultFg: dFg,
+      onBg: (bg) => set({ bg, fg: '', ...(bg ? {} : { bgOp: null }) }), onOpacity: (o) => set({ bgOp: o >= 100 ? null : o, fg: '' }), onFg: (fg) => set({ fg }) }); }
+  patchColors(obj, patch) { const c = { ...(obj || {}) }; Object.keys(patch).forEach((k) => { if (patch[k] === '' || patch[k] == null) delete c[k]; else c[k] = patch[k]; }); return c; }
+  setDocColor(part, patch) { this.update((x) => { if (!x.doc) return x; const all = { ...(x.doc.colors || {}) }; const c = this.patchColors(all[part], patch); if (Object.keys(c).length) all[part] = c; else delete all[part]; x.doc.colors = all; return x; }); }
+  setSecColor(pi, si, patch) { this.update((x) => { const sec = x.pages[pi] && x.pages[pi].sections[si]; if (sec) { Object.keys(patch).forEach((k) => { if (patch[k] === '' || patch[k] == null) delete sec[k]; else sec[k] = patch[k]; }); x.pages[pi].approved = null; } return x; }); }
+  setEmColor(ei, patch) { this.update((x) => { const e = x.emails[ei]; if (e) { const c = this.patchColors(e.colors, patch); if (Object.keys(c).length) e.colors = c; else delete e.colors; } return x; }); }
+  colorVals(o, st, pi, pg, ei) {
+    const b = this.D.siteBrand(), C = this.P && this.P.colorKit && this.P.colorKit(), chip = (on) => 'height:30px;padding:0 10px;border-radius:999px;font:700 12px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+    const ink = (C && C.hex(b.primary)) || '#0E2266', parts = [['cover', 'Cover', ink, '#FFFFFF'], ['page', 'Body pages', '#FFFFFF', '#1E2230'], ['call', 'Callouts', C ? C.mixWithWhite(b.accent || b.secondary || ink, 12) : '#EEF0F6', ink], ['about', 'About page', ink, '#FFFFFF']];
+    const dp = parts.find((p) => p[0] === st.docPart) || parts[0], dc = (o.doc && o.doc.colors) || {};
+    const fams = (pg && this.P.FAMILY_OF) ? pg.sections.map((s, i) => (this.P.FAMILY_OF[s.kind] ? i : -1)).filter((i) => i >= 0) : [], ps = fams.includes(st.pgSel) ? st.pgSel : fams[0];
+    const sx = ps != null && pg ? pg.sections[ps] : null; let pD = ['#FFFFFF', '#111827'];
+    if (sx && C) { const des = o.design || {}, fam = this.P.FAMILY_OF[sx.kind], pth = this.P.panelTheme(b, des.style), sol = sx.solid != null ? sx.solid : ((des.solid || {})[fam] || ''), th = sol ? this.P.solidTheme(b, pth, sol) : pth; pD = [th['--bg'], th['--ink']]; }
+    const em = o.emails[ei];
+    return { docParts: parts.map((p) => ({ label: p[1], pressed: p === dp ? 'true' : 'false', pick: () => this.setState({ docPart: p[0] }), style: chip(p === dp) })),
+      docCC: o.doc ? this.ccModel(dc[dp[0]], dp[2], dp[3], (patch) => this.setDocColor(dp[0], patch)) : { on: false },
+      pgHasPanels: !!(fams.length && !o.conversion), pgPanels: fams.map((i) => ({ label: (this.P.FAMILY_LABEL || {})[this.P.FAMILY_OF[pg.sections[i].kind]] || pg.sections[i].kind, pressed: i === ps ? 'true' : 'false', pick: () => this.setState({ pgSel: i }), style: chip(i === ps) })),
+      pgCC: sx ? this.ccModel(sx, pD[0], pD[1], (patch) => this.setSecColor(pi, ps, patch)) : { on: false },
+      emCC: em && em.content ? this.ccModel(em.colors, '#FFFFFF', '#1D2433', (patch) => this.setEmColor(ei, patch)) : { on: false } };
   }
   update(fn) { const o = this.offer(); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
   // The same for one offer by id (a run keeps writing to its own offer even if the person opens another one meanwhile).
@@ -514,7 +537,7 @@ class Component extends DCLogic {
   ctaOf(o, em) { const d = this.O.ctaFor(o.kind, em.key, o); return { text: (em.content && em.content.cta) || d.text, url: (em.content && em.content.ctaUrl) || d.url || o.pageUrl || '#' }; }
   // Webinar main pages use the chosen template (Editorial, Horizon, Gallery); everything else uses the panel designs.
   renderOfferPage(o, i, b, opts = {}) { const pg = o.pages[i]; if (o.conversion) return this.CV ? this.CV.renderConversionPage(this.convSite(o), i, b, opts) : '<!doctype html><html lang="en"><body><p>The landing page designer couldn’t load. Please reload the page.</p></body></html>'; if (o.kind === 'webinar' && o.tpl && o.tpl !== 'panels' && pg && pg.key === 'offer') return this.W.renderWebinar(o, i, b, { ...opts, tpl: o.tpl }); return this.K.renderPage(o, i, b, opts); }
-  emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url }); }
+  emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url, colors: em.colors }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
   // Webinars and workshops: make the event graphics (Zoom slides, banners, LinkedIn post, newsletter) in the Event Graphics Builder.
   openGraphics = async () => {
@@ -640,7 +663,7 @@ class Component extends DCLogic {
     const ei = Math.min(st.emailIdx, Math.max(0, nE - 1)), em = o.emails[ei], c = (em && em.content) || {}, dr = st.emDraft || {};
     const fv = (k) => (dr[k] != null ? dr[k] : k === 'bullets' ? (c.bullets || []).join('\n') : c[k] || '');
     Object.assign(vals, { noEmails: !nE, hasEmails: !!nE,
-      emailRows: o.emails.map((e, i) => { this._emCache = this._emCache || {}; const ck = JSON.stringify([e.content, o.esp, b.primary, b.logo]); if (e.content && !this._emCache[ck]) this._emCache[ck] = this.emailHtml(o, e);
+      emailRows: o.emails.map((e, i) => { this._emCache = this._emCache || {}; const ck = JSON.stringify([e.content, o.esp, b.primary, b.logo, e.colors]); if (e.content && !this._emCache[ck]) this._emCache[ck] = this.emailHtml(o, e);
         return { n: i + 1, name: e.name, when: e.when, to: e.to, label: 'Email ' + (i + 1) + ': ' + e.name + ', ' + e.when + (e.approved ? ', approved' : e.content ? ', needs review' : ', being written'), current: i === ei ? 'true' : 'false', pick: () => this.setState({ emailIdx: i, emDraft: null, emNote: '' }),
           hasDoc: !!e.content, doc: e.content ? this._emCache[ck] : '', writing: !e.content, pill: e.approved ? PILL.approved[0] : e.content ? PILL.review[0] : '', pillStyle: e.content ? pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') : 'display:none;',
           style: 'flex:none;display:flex;flex-direction:column;gap:8px;width:204px;padding:12px;border-radius:12px;cursor:pointer;' + (i === ei ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; }),
@@ -650,8 +673,9 @@ class Component extends DCLogic {
       emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
       saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }),
       emSubject: fv('subject'), emPre: fv('preheader'), emFrameTitle: 'Preview of the ' + (em ? em.name : '') + ' email',
-      emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
+      emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url, colors: em.colors }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
 
+    Object.assign(vals, this.colorVals(o, st, pi, pg, ei));
     // Launch
     const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0);
     Object.assign(vals, { isEventOffer: !!O.offerById(o.kind).event, openGraphics: this.openGraphics, gfxNote: st.gfxNote || '', gfxNoteOn: !!st.gfxNote, gfxNoun: O.offerById(o.kind).noun,
