@@ -9,35 +9,40 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Inter:wght@600;700&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}.cob-picker:focus-within{outline:3px solid #6818F8;outline-offset:2px}</style>
+<link rel="stylesheet" href="https://catalystos-dashboard-staging.vercel.app/catalyst-ui.css">
+<script src="https://catalystos-dashboard-staging.vercel.app/cost-callout.js"></script>
+<style>body{margin:0}@media (max-width: 560px) { .cob-picker { flex: 1 1 180px; min-width: 0 !important; } }</style>
 </helmet>
 <div style="font-family: 'Public Sans', sans-serif; color: #FFFFFF;">
-<div style="background: radial-gradient(120% 180% at 50% -40%, #12296f 0%, #081A53 60%); border-bottom: 2px solid; border-image: linear-gradient(90deg,#1921FE,#6818F8,#C1229C,#FD5920,#FDA71A) 1; padding: 10px 20px; position: relative; display: flex; align-items: center; justify-content: center; gap: 11px; min-height: 22px; font-family: Manrope, sans-serif;">
-<a href="{{ backHref }}" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 4px; font-weight: 800; font-size: 10.5px; color: #FFFFFF; text-decoration: none; background: linear-gradient(180deg, #FF7A45 0%, #E8460F 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 3px rgba(140,30,0,0.35), 0 3px 8px -3px rgba(232,70,15,0.6); border-radius: 7px; padding: 0 9px; height: 22px; box-sizing: border-box; white-space: nowrap;"><img src="https://catalystos-dashboard-staging.vercel.app/icons/rocket4.png" alt="" style="width: 40px; height: 40px; object-fit: contain; transform: scaleX(-1); flex: none; margin: -9px -4px -9px -3px;">Back to Dashboard</a>
-<span style="width: 25px; height: 25px; border-radius: 8px; background: linear-gradient(135deg,#1921FE,#6818F8 38%,#C1229C 64%,#FD5920 84%,#FDA71A); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; box-shadow: 0 3px 10px rgba(105,24,248,0.5);">OS</span>
-<span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #8B95C4;">Powered by</span>
-<span style="font-size: 14px; font-weight: 700;">Catalyst<span style="color: #C1229C;">OS</span></span>
-<sc-if value="{{ hasAgency }}" hint-placeholder-val="{{ true }}"><span style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 8px; white-space: nowrap;"><span style="font-size: 10.5px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #8B95C4;">Agency</span><span style="font-size: 14px; font-weight: 800;">{{ agency }}</span></span></sc-if>
+<!-- Bars (Erika, Oct 20): top bar (account + agency right) · navy app bar (title left, client picker right) · light purple bar (Saved Files left). -->
+<div class="cos-brandbar">
+  <div class="cos-brandbar-l"><a href="{{ backHref }}" class="cos-back-sm" title="Back to this client’s dashboard" style="text-decoration: none;"><img src="https://catalystos-dashboard-staging.vercel.app/icons/rocket4.png" alt="">Back to Dashboard</a></div>
+  <div class="cos-brandbar-c"><span class="cos-mark">OS</span><span class="cos-powered">Powered by</span><span class="cos-wordmark">Catalyst<b>OS</b></span></div>
+  <div class="cos-brandbar-r">
+    <span data-cos-cost="auto"></span>
+    <div class="cos-user">
+      <sc-if value="{{ hasEmail }}" hint-placeholder-val="{{ true }}"><span class="cos-user-email" title="{{ email }}">{{ email }}</span></sc-if>
+      <button type="button" onClick="{{ onSignOut }}" class="cos-signout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Sign out</button>
+    </div>
+    <sc-if value="{{ hasAgency }}" hint-placeholder-val="{{ true }}"><span class="cos-agency"><span>Agency</span><strong>{{ agency }}</strong></span></sc-if>
+  </div>
 </div>
-<div style="background: #0E2266; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 12px 24px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: Manrope, sans-serif; font-size: 20px; color: #FFFFFF;">
-<span style="font-weight: 800;">{{ appName }}:</span>
-<span style="font-weight: 800; color: #FF7A45;">{{ clientName }}</span>
-<div style="margin-left: auto; display: flex; align-items: center; gap: 8px; align-self: center;">
-<span style="font-size: 12px; font-weight: 600; color: #C9CFE8; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ email }}</span>
-<button type="button" onClick="{{ onSignOut }}" style="display: flex; align-items: center; gap: 6px; background: #FFFFFF; color: #081A53; font: 800 12px Manrope, sans-serif; border: none; border-radius: 999px; padding: 5px 13px 5px 10px; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.25); cursor: pointer;" style-hover="background: #FFD23F;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Sign out</button>
+<div class="cos-appbar">
+  <div class="cos-appbar-title"><span class="cos-appbar-app">{{ appName }}:</span><span class="cos-appbar-client">{{ clientName }}</span></div>
+  <div class="cos-appbar-tools" role="group" aria-label="Client">
+    <span class="cos-picker-label">Client:</span>
+    <div class="cos-picker cob-picker" style="min-width: 220px;">
+      <select value="{{ clientId }}" onChange="{{ onPickClient }}" aria-label="Switch client" title="Switch client" style="appearance: none; -webkit-appearance: none; border: 0; background: transparent; height: 100%; min-width: 0; flex: 1; padding: 0 44px 0 16px; font: 700 15px Manrope, sans-serif; color: #081A53; cursor: pointer; border-radius: 10px; text-overflow: ellipsis;">
+        <sc-for list="{{ clients }}" as="c" hint-placeholder-count="2"><option value="{{ c.id }}">{{ c.name }}</option></sc-for>
+      </select>
+      <span aria-hidden="true" style="position: absolute; right: 0; top: 0; bottom: 0; width: 38px; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(8,26,83,0.14); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#081A53" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span>
+    </div>
+  </div>
 </div>
+<!-- Saved Files mounts here (CosSavedBar, [data-cos-saved-mount]). -->
+<div class="cos-subbar" data-cos-subbar="">
+  <div class="cos-subbar-saved" data-cos-saved-mount=""></div>
 </div>
-<div style="background: #E4E1EC; border-bottom: 1px solid rgba(8,26,83,0.10); padding: 12px 24px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; color: #081A53;">
-<span style="font-family: Inter, 'Public Sans', sans-serif; font-size: 12.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #463E6B;">Client:</span>
-<div class="cob-picker" style="position: relative; display: inline-flex; align-items: center; height: 36px; border-radius: 10px; background: #FFFFFF; border: 1px solid rgba(8,26,83,0.14); box-sizing: border-box;">
-<span aria-hidden="true" style="font: 700 15px Manrope, sans-serif; color: #081A53; padding: 0 14px 0 16px; white-space: nowrap; max-width: 360px; overflow: hidden; text-overflow: ellipsis;">{{ clientName }}</span>
-<span aria-hidden="true" style="width: 38px; height: 100%; display: flex; align-items: center; justify-content: center; border-left: 1px solid rgba(8,26,83,0.14);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#081A53" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span>
-<select value="{{ clientId }}" onChange="{{ onPickClient }}" aria-label="Switch client" title="Switch client" style="position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font: 700 15px Manrope, sans-serif;">
-<sc-for list="{{ clients }}" as="c" hint-placeholder-count="2"><option value="{{ c.id }}">{{ c.name }}</option></sc-for>
-</select>
-</div>
-</div>
-<div data-cos-taskbar data-cos-saved-mount role="toolbar" aria-label="Content Offer Builder task bar" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-height: 48px; box-sizing: border-box; padding: 8px 24px; background: #FFFFFF; border-bottom: 1px solid rgba(8,26,83,0.08); color: #14182B;"></div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"appName":{"editor":"text","default":"Content Offer Builder"},"agency":{"editor":"text","default":"McGuire Marketing"},"clientName":{"editor":"text","default":"Meridian Ridge Capital"},"clientId":{"editor":"text","default":"demo"},"email":{"editor":"text","default":"you@agency.com"},"backHref":{"editor":"text","default":"#"},"clients":{"editor":null},"onPickClient":{"editor":null},"onSignOut":{"editor":null},"$preview":{"width":1440,"height":200}}'>
@@ -45,7 +50,7 @@ class Component extends DCLogic {
   renderVals() {
     const p = this.props;
     return {
-      appName: p.appName || 'Content Offer Builder', agency: p.agency || '', hasAgency: !!p.agency, clientName: p.clientName || '', clientId: p.clientId || '', email: p.email || '',
+      appName: p.appName || 'Content Offer Builder', agency: p.agency || '', hasAgency: !!p.agency, clientName: p.clientName || '', clientId: p.clientId || '', email: p.email || '', hasEmail: !!p.email,
       backHref: p.backHref || '#', clients: p.clients || [{ id: p.clientId || '', name: p.clientName || '' }],
       onPickClient: (e) => { if (p.onPickClient) p.onPickClient(e.target.value); },
       onSignOut: () => { if (p.onSignOut) p.onSignOut(); },
