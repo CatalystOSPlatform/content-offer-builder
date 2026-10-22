@@ -33,13 +33,27 @@ class Component extends DCLogic {
     camps: [], busy: false, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start(); this.sfRegister(0); this.cosCreateMount();
+    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0);
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
       if (d.cod === 'pages' && d.n) { if (this._docY != null) { try { e.source.scrollTo(0, this._docY); } catch (x) {} this._docY = null; } if (this.state.docPages !== d.n) this.setState({ docPages: d.n }); } };
     window.addEventListener('message', this._onMsg);
   }
   componentWillUnmount() { window.removeEventListener('message', this._onMsg); }
+  // Ask before leaving unsaved work (Erika, Oct 22). Every change saves the offer right away, so unsaved = a save still
+  // under way or one that failed, or an edit typed but not saved yet (a text field or an email's fields).
+  leaveGuard(n) {
+    if (!window.CosLeaveGuard) { if (n < 20) setTimeout(() => this.leaveGuard(n + 1), 500); return; }
+    if (!this._lgP) { this._lgP = new Set(); const p0 = this.persist; this.persist = (o) => { const p = p0.call(this, o); this._lgP.add(p); const done = () => this._lgP.delete(p); p.then(done, done); return p; }; }
+    const fieldEdited = () => { const f = this.state.field; return !!f && f.val !== f.orig; };
+    window.CosLeaveGuard.register({ label: 'content offer',
+      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft,
+      save: async () => {
+        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail();
+        const f = this._lgFail; if (f) this.persist(this.state.offers.find((x) => x.id === f.id) || f);
+        await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
+      } });
+  }
   // The Saved Files bar under the client picker; follows the client when it changes.
   componentDidUpdate() { this.mountSaved(); }
   mountSaved() {
@@ -86,7 +100,7 @@ class Component extends DCLogic {
     if (dead()) return o;
     if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
-    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); this.thumbLater(s2); return s2; } catch (e) { this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); if (this._lgFail && this._lgFail.id === s2.id) this._lgFail = null; this.thumbLater(s2); return s2; } catch (e) { this._lgFail = o; this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
   }
   // Saved Files thumbnail: the offer's first landing page, drawn a few seconds after the last save (again only when it changed).
   thumbLater(o) {
@@ -481,7 +495,7 @@ class Component extends DCLogic {
     const o = this.offer(); if (!o) return; const pg = o.pages[this.state.pageIdx]; if (!pg) return;
     const [si, ...rest] = path.split('.'); const sec = pg.sections[+si]; if (!sec) return;
     const fp = rest.join('.'), v = getPath(sec.content, fp);
-    this.setState({ field: { si: +si, path: fp, val: v == null ? '' : String(v), label: ((this.K.SECTIONS[sec.kind] || {}).label || sec.kind) + ' · ' + fp.replace(/^items\.(\d+)\./, (m, n) => 'item ' + (+n + 1) + ' ').replace(/\./g, ' ') } });
+    this.setState({ field: { si: +si, path: fp, val: v == null ? '' : String(v), orig: v == null ? '' : String(v), label: ((this.K.SECTIONS[sec.kind] || {}).label || sec.kind) + ' · ' + fp.replace(/^items\.(\d+)\./, (m, n) => 'item ' + (+n + 1) + ' ').replace(/\./g, ' ') } });
   }
   saveField = () => { const fd = this.state.field; if (!fd) return; const pi = this.state.pageIdx; this.update((o) => { const sec = o.pages[pi].sections[fd.si]; sec.content = setPath(sec.content, fd.path, fd.val); sec.by = 'person'; o.pages[pi].approved = null; return o; }); this.setState({ field: null }); };
 
