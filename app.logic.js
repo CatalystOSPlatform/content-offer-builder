@@ -35,7 +35,7 @@ class Component extends DCLogic {
     camps: [], busy: false, pickQ: '', sfList: {}, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0);
+    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister();
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
       if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
@@ -127,6 +127,22 @@ class Component extends DCLogic {
   };
 
   offer() { return this.state.offers.find((o) => o.id === this.state.offerId) || null; }
+  // Strategy button (pilot-dash cos-strategy-why.js, Erika, Oct 22): opt-in popup with the campaign's reason for this offer and
+  // the Strategist's plan already saved on it (o.strategy: objective, audience, angle, fit, and why each page and email). No AI call.
+  strategyRegister() { (window.CosStrategyReady = window.CosStrategyReady || []).push((S) => S.button('#cob-strategy', () => this.strategyWhy())); }
+  strategyWhy() {
+    const S = window.CosStrategy, o = this.state.view === 'offer' ? this.offer() : null; if (!S) return null;
+    if (!o) return S.campaign('contentoffers'); // no offer open: the current campaign's reason for its content offer
+    const camp = o.campaignId ? S.campaign('contentoffers', { campaignId: o.campaignId, noun: 'offer' }) : null;
+    const st = o.strategy || {}, t = (v) => (typeof v === 'string' ? v.trim() : '');
+    const part = (label, x) => { if (!x) return null; const text = t(typeof x === 'string' ? x : x.text); const why = t(x.why), src = t(x.source), pain = t(x.pain);
+      const body = [text, pain ? 'The problem they’d say out loud: ' + pain : '', why, src ? 'Source: ' + src : ''].filter(Boolean).join('. ').replace(/\.\./g, '.'); return body ? { name: label, why: body } : null; };
+    const items = [part('Objective', st.objective), part('Audience', st.audience), part('Angle', st.angle), t(st.fit) && { name: 'Why this kind of offer', why: t(st.fit) }].filter(Boolean);
+    const pages = (st.pages || []).filter((p) => p && t(p.why)).map((p) => ({ name: (t(p.job) || t(p.key)), why: t(p.why) }));
+    const emails = (st.emails || []).filter((e) => e && t(e.why)).map((e) => ({ name: [t(e.name), t(e.when)].filter(Boolean).join(' · ') || 'Email', why: t(e.why) }));
+    const own = (t(st.summary) || items.length || pages.length || emails.length) ? { title: 'The Strategist’s plan for this offer', summary: t(st.summary), items, sections: [pages.length && { heading: 'Why each page', items: pages }, emails.length && { heading: 'Why each email', items: emails }].filter(Boolean) } : null;
+    return S.merge(camp, own);
+  }
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
   // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
