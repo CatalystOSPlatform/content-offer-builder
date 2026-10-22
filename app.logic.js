@@ -61,9 +61,9 @@ class Component extends DCLogic {
     } catch (e) { console.error(e); this.setState({ boot: 'error', bootMsg: 'Could not start: ' + (e && e.message || e) }); }
   }
   async useInfo(info) {
-    const [offers, camps] = await Promise.all([this.D.listOffers().catch(() => []), this.D.campaigns().catch(() => [])]);
+    const [offers, camps, curCamp] = await Promise.all([this.D.listOffers().catch(() => []), this.D.campaigns().catch(() => []), this.D.currentCampaign().catch(() => '')]);   // Current campaign (Erika, Oct 22)
     const want = new URLSearchParams(location.search).get('offer'), has = want && offers.find((o) => o.id === want);
-    this.setState({ boot: 'ready', info, offers, camps, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
+    this.setState({ boot: 'ready', info, offers, camps, curCamp, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
   }
   // Switching clients happens right here: the new client's offers, campaigns and brand load, and nothing of the old client stays on screen.
   pickClient = async (id) => {
@@ -79,7 +79,8 @@ class Component extends DCLogic {
 
   offer() { return this.state.offers.find((o) => o.id === this.state.offerId) || null; }
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
-  formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
+  // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
+  formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   async persist(o) {
     const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS create this" made and then undid
     if (dead()) return o;
@@ -575,7 +576,7 @@ class Component extends DCLogic {
       return { name: x.name || 'Content offer', meta: O.offerById(x.kind).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, delAsk: false, err: '' }),
         style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
     const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, newOffer: () => this.setState({ view: 'new', offerId: null, err: '', delAsk: false }),
-      campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => this.setForm({ camp: e.target.value }),
+      campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
       kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
       dateVal: f.date, setDate: (e) => this.setForm({ date: e.target.value }), timeVal: f.time, setTime: (e) => this.setForm({ time: e.target.value }), whereVal: f.where, setWhere: (e) => this.setForm({ where: e.target.value }),
