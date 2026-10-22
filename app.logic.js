@@ -82,7 +82,7 @@ class Component extends DCLogic {
   // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   async persist(o) {
-    const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS create this" made and then undid
+    const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS Create This" made and then undid
     if (dead()) return o;
     if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
@@ -232,7 +232,7 @@ class Component extends DCLogic {
   updateOf(id, fn) { const o = this.state.offers.find((x) => x.id === id); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
   setForm(patch) { this.setState((st) => ({ form: { ...st.form, ...patch } })); }
 
-  // The AI work, run only from "Let CatalystOS create this" (the shared CatalystOS panel, catalyst-create.js).
+  // The AI work, run only from "Let CatalystOS Create This" (the shared CatalystOS panel, catalyst-create.js).
   // Each step checks alive() so Stop / Undo / Regenerate can cut a run short; failures throw so the panel puts everything back.
   stopped() { const e = new Error('stopped'); e.stopped = true; return e; }
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
@@ -365,7 +365,7 @@ class Component extends DCLogic {
     await this.updateOf(o.id, (x) => { x.emails[i].content = content; x.emails[i].approved = null; return x; });
     this.setState({ emDraft: null, emNote: '' });
   }
-  // What "Let CatalystOS create this" works on, read from what is open (never asked):
+  // What "Let CatalystOS Create This" works on, read from what is open (never asked):
   // the start screen → a whole new offer; Landing pages → the open page; Emails → the open email; Strategy or Launch → every page and email
   // (after revising the strategy if the person wrote changes).
   ccTarget() {
@@ -690,7 +690,7 @@ class Component extends DCLogic {
           convNeedsReview: !!(o.conversion.review && (R.blockers || []).some((b) => /reviewer|review by/i.test(b))) || !!set.complianceApproved, convReviewed: set.complianceApproved ? 'true' : 'false', convReviewedText: set.complianceApproved ? 'Yes' : 'Not yet',
           toggleConvReviewed: () => this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), complianceApproved: !(x.conversion.settings || {}).complianceApproved } }; return x; }),
           convTitle: (R.blockers || []).length ? 'Landing page review ' + R.score + '/100 · before publishing:' : 'Landing page review ' + R.score + '/100 · nothing is blocking publication.', convBlockers: (R.blockers || []).map((t) => ({ t })), convBg: (R.blockers || []).length ? '#FEF3F2' : '#E8F5EC', convFg: (R.blockers || []).length ? '#7A271A' : '#14532D' }; })(),
-      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS create this.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
+      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS Create This.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;
   }

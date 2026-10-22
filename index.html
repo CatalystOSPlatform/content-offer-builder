@@ -44,7 +44,7 @@
 <button type="button" onClick="{{ newOffer }}" style="height: 42px; border: none; border-radius: 10px; background: linear-gradient(135deg,#1921FE,#6818F8); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">New content offer +</button>
 <sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="cob-new" style="display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #DCCCFE; border-radius: 14px; background: #FBF9FF;">
-<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer, add anything we should know, then click <b>Let CatalystOS create this</b>.</p></div>
+<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer, add anything we should know, then click <b>Let CatalystOS Create This</b>.</p></div>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Campaign</span>
 <select value="{{ campVal }}" onChange="{{ setCamp }}" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF;"><option value="none">No campaign (we choose a timely direction)</option><sc-for list="{{ campOptions }}" as="co" hint-placeholder-count="2"><option value="{{ co.id }}">{{ co.label }}</option></sc-for></select></label>
 <sc-if value="{{ noCamps }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 12px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 7px 10px; line-height: 1.45;">This client has no campaigns in Brand Command yet. Add one there, or go ahead without a campaign.</p></sc-if>
@@ -134,14 +134,14 @@
 </div>
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Changes you’d like (optional)</span><textarea value="{{ noteVal }}" onInput="{{ setNote }}" rows="3" aria-describedby="cob-note-h" placeholder="e.g. Aim at RIA founders under $500M, drop the last-chance email, lead with compliance" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label>
-<span id="cob-note-h" style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">We use these the next time you click Let CatalystOS create this.</span>
+<span id="cob-note-h" style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">We use these the next time you click Let CatalystOS Create This.</span>
 </div>
 </section>
 </sc-if>
 
 <sc-if value="{{ tabDoc }}" hint-placeholder-val="{{ false }}">
 <section aria-label="{{ docLabel }}" style="display: flex; flex-direction: column; gap: 12px;">
-<sc-if value="{{ docIdle }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">The {{ docNoun }} isn’t written yet</h2><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS create this. We write and design the {{ docNoun }} as real pages in this client’s brand, from the strategy and Brand Command.</p></div></sc-if>
+<sc-if value="{{ docIdle }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">The {{ docNoun }} isn’t written yet</h2><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS Create This. We write and design the {{ docNoun }} as real pages in this client’s brand, from the strategy and Brand Command.</p></div></sc-if>
 <sc-if value="{{ docWriting }}" hint-placeholder-val="{{ false }}"><div role="status" style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; max-width: 760px;"><span style="width: 20px; height: 20px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span><span style="font: 700 13.5px Manrope, sans-serif; color: #081A53;">Writing and designing the {{ docNoun }}…</span></div></sc-if>
 <sc-if value="{{ hasDoc }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
@@ -169,7 +169,7 @@
 
 <sc-if value="{{ tabPages }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Landing pages" style="display: flex; flex-direction: column; gap: 12px;">
-<sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No landing pages yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>
+<sc-if value="{{ noPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No landing pages yet. Click Let CatalystOS Create This to write them from the strategy.</p></sc-if>
 <sc-if value="{{ hasPages }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;">
 <div role="group" aria-label="Pages" style="display: flex; flex-wrap: wrap; gap: 6px;"><sc-for list="{{ pageTabs }}" as="pt" hint-placeholder-count="2"><button type="button" onClick="{{ pt.pick }}" aria-current="{{ pt.current }}" style="{{ pt.style }}">{{ pt.title }}<span style="{{ pt.pillStyle }}">{{ pt.pill }}</span></button></sc-for></div>
@@ -202,7 +202,7 @@
 
 <sc-if value="{{ tabEmails }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Emails" style="display: flex; flex-direction: column; gap: 12px;">
-<sc-if value="{{ noEmails }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No emails yet. Click Let CatalystOS create this to write them from the strategy.</p></sc-if>
+<sc-if value="{{ noEmails }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No emails yet. Click Let CatalystOS Create This to write them from the strategy.</p></sc-if>
 <sc-if value="{{ hasEmails }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-direction: column; gap: 16px;">
 <div role="group" aria-label="Emails in the sequence" style="display: flex; gap: 12px; overflow-x: auto; padding: 4px 2px 10px;"><sc-for list="{{ emailRows }}" as="er" hint-placeholder-count="6"><button type="button" onClick="{{ er.pick }}" aria-current="{{ er.current }}" aria-label="{{ er.label }}" style="{{ er.style }}"><span style="position: relative; display: block; width: 180px; height: 240px; overflow: hidden; border-radius: 8px; background: #F3F4F7;"><sc-if value="{{ er.hasDoc }}" hint-placeholder-val="{{ true }}"><iframe title="" aria-hidden="true" tabindex="-1" srcdoc="{{ er.doc }}" style="position: absolute; top: 0; left: 0; width: 600px; height: 800px; border: 0; transform: scale(0.3); transform-origin: 0 0; pointer-events: none;"></iframe></sc-if><sc-if value="{{ er.writing }}" hint-placeholder-val="{{ false }}"><span style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;"><span style="width: 22px; height: 22px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span></span></sc-if><span style="position: absolute; top: 6px; right: 6px; {{ er.pillStyle }}">{{ er.pill }}</span></span><span style="display: flex; flex-direction: column; gap: 2px; text-align: left;"><span style="font: 800 12.5px Manrope, sans-serif; color: #14182B;">{{ er.n }}. {{ er.name }}</span><span style="font-size: 11.5px; color: #4A5168;">{{ er.when }} · to {{ er.to }}</span></span></button></sc-for></div>
@@ -380,7 +380,7 @@ class Component extends DCLogic {
   // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   async persist(o) {
-    const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS create this" made and then undid
+    const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS Create This" made and then undid
     if (dead()) return o;
     if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
@@ -530,7 +530,7 @@ class Component extends DCLogic {
   updateOf(id, fn) { const o = this.state.offers.find((x) => x.id === id); if (!o) return; return this.persist(fn(JSON.parse(JSON.stringify(o)))); }
   setForm(patch) { this.setState((st) => ({ form: { ...st.form, ...patch } })); }
 
-  // The AI work, run only from "Let CatalystOS create this" (the shared CatalystOS panel, catalyst-create.js).
+  // The AI work, run only from "Let CatalystOS Create This" (the shared CatalystOS panel, catalyst-create.js).
   // Each step checks alive() so Stop / Undo / Regenerate can cut a run short; failures throw so the panel puts everything back.
   stopped() { const e = new Error('stopped'); e.stopped = true; return e; }
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
@@ -663,7 +663,7 @@ class Component extends DCLogic {
     await this.updateOf(o.id, (x) => { x.emails[i].content = content; x.emails[i].approved = null; return x; });
     this.setState({ emDraft: null, emNote: '' });
   }
-  // What "Let CatalystOS create this" works on, read from what is open (never asked):
+  // What "Let CatalystOS Create This" works on, read from what is open (never asked):
   // the start screen → a whole new offer; Landing pages → the open page; Emails → the open email; Strategy or Launch → every page and email
   // (after revising the strategy if the person wrote changes).
   ccTarget() {
@@ -988,7 +988,7 @@ class Component extends DCLogic {
           convNeedsReview: !!(o.conversion.review && (R.blockers || []).some((b) => /reviewer|review by/i.test(b))) || !!set.complianceApproved, convReviewed: set.complianceApproved ? 'true' : 'false', convReviewedText: set.complianceApproved ? 'Yes' : 'Not yet',
           toggleConvReviewed: () => this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), complianceApproved: !(x.conversion.settings || {}).complianceApproved } }; return x; }),
           convTitle: (R.blockers || []).length ? 'Landing page review ' + R.score + '/100 · before publishing:' : 'Landing page review ' + R.score + '/100 · nothing is blocking publication.', convBlockers: (R.blockers || []).map((t) => ({ t })), convBg: (R.blockers || []).length ? '#FEF3F2' : '#E8F5EC', convFg: (R.blockers || []).length ? '#7A271A' : '#14532D' }; })(),
-      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS create this.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
+      notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS Create This.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;
   }
