@@ -28,9 +28,7 @@
   </div>
 </div>
 <div class="cos-appbar">
-  <div class="cos-appbar-title"><span class="cos-appbar-app">{{ appName }}:</span><span class="cos-appbar-client">{{ clientName }}</span></div>
-  <div class="cos-appbar-tools" role="group" aria-label="Client">
-    <span class="cos-picker-label">Client:</span>
+  <div class="cos-appbar-title" role="group" aria-label="Client" style="display:flex; align-items:center; flex-wrap:wrap; gap:10px 12px; min-width:0;"><span class="cos-appbar-app">{{ appName }}:</span>
     <div class="cos-picker cob-picker" style="min-width: 220px;">
       <select value="{{ clientId }}" onChange="{{ onPickClient }}" aria-label="Switch client" title="Switch client" style="appearance: none; -webkit-appearance: none; border: 0; background: transparent; height: 100%; min-width: 0; flex: 1; padding: 0 44px 0 16px; font: 700 15px Manrope, sans-serif; color: #081A53; cursor: pointer; border-radius: 10px; text-overflow: ellipsis;">
         <sc-for list="{{ clients }}" as="c" hint-placeholder-count="2"><option value="{{ c.id }}">{{ c.name }}</option></sc-for>
