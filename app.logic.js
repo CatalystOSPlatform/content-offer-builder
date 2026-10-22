@@ -69,7 +69,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CAT = await lib('./lib/offer-catalog.js'); this.PK = await lib('./lib/popup-kit.js'); this.CV = await this.D.loadConversion();
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CAT = await lib('./lib/offer-catalog.js'); this.PK = await lib('./lib/popup-kit.js'); this.PV = await lib('./lib/offer-preview.js'); this.CV = await this.D.loadConversion();
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -642,17 +642,17 @@ class Component extends DCLogic {
   // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
   sampleDoc(kind, key, tpl) {
     if (tpl === undefined && kind === 'webinar') tpl = this.state.form.tpl || 'editorial';
-    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, ck = JSON.stringify([kind, key, tpl || "", b.primary, b.logo, b.name, f.title, f.date, f.time, f.where, f.speakers, f.videoUrl, (b.services || []).length]);
+    this._sample = this._sample || {}; const b = this.D.siteBrand(), f = this.state.form, te = this.formEntry(), ck = JSON.stringify([kind, key, tpl || "", te && te.id, b.primary, b.logo, b.name, f.title, f.date, f.time, f.where, f.speakers, f.videoUrl, (b.services || []).length]);
     if (this._sample[ck]) return this._sample[ck];
-    const O = this.O.offerById(kind), noun = O.noun, title = f.title.trim() || (b.services && b.services[0] && b.services[0].title) || b.tagline || b.name;
+    const O = this.sampleType(kind), noun = O.noun, title = f.title.trim() || (b.services && b.services[0] && b.services[0].title) || b.tagline || b.name;
     const items = (b.services || []).slice(0, 4).map((x) => ({ title: x.title, text: x.text || '' }));
     const learn = items.length >= 3 ? items : [{ title: '[Key takeaway one]', text: 'What readers will be able to do.' }, { title: '[Key takeaway two]', text: 'A practical idea they can use right away.' }, { title: '[Key takeaway three]', text: 'How to measure what works.' }];
     const C = {
       hero: kind === 'replay' && key === 'offer' ? { eyebrow: 'Free webinar replay', headline: title, body: 'Missed it live? Watch the full session on demand.', cta: O.cta }
-        : key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : 'Download now' }
+        : key === 'thanks' ? { eyebrow: 'Thank you', headline: O.event ? 'You’re registered' : O.thanks || 'Your ' + noun + ' is on its way', body: O.event ? 'Watch your inbox for the details and a calendar invite.' : O.thanksBody || 'Check your inbox for the download link.', cta: O.event ? 'Add to calendar' : O.thanksCta || 'Download now' }
         : key === 'speakers' ? { eyebrow: O.label, headline: 'Meet your hosts', body: 'The people from ' + b.name + ' leading this ' + noun + '.', cta: O.cta }
         : key === 'details' ? { eyebrow: O.label, headline: 'Agenda and details', body: '[Date] · [Time] · [Where]', cta: O.cta }
-        : { eyebrow: 'Free ' + O.label.toLowerCase(), headline: title, body: b.description ? String(b.description).split(/(?<=[.!?])\s/)[0] : 'A free ' + noun + ' from ' + b.name + '.', cta: O.cta },
+        : { eyebrow: O.entry ? 'Free ' + noun : 'Free ' + O.label.toLowerCase(), headline: title, body: b.description ? String(b.description).split(/(?<=[.!?])\s/)[0] : 'A free ' + noun + ' from ' + b.name + '.', cta: O.cta },
       features: { eyebrow: 'What you’ll learn', heading: 'Inside the ' + noun, intro: '', items: learn },
       agenda: { eyebrow: 'Agenda', heading: 'What we’ll cover', intro: '', items: learn },
       team: { eyebrow: O.event || O.replay ? 'Your speakers' : 'Written by', heading: O.event || O.replay ? 'Meet the speakers' : 'From the team at ' + b.name, intro: '', people: (f.speakers || []).slice() },
@@ -673,14 +673,43 @@ class Component extends DCLogic {
   }
   // Sample email copy for the start screen (Brand Command facts and the standard sequence only; the real emails are written later).
   sampleEmail(kind, e) {
-    const O = this.O.offerById(kind), b = this.D.siteBrand(), f = this.state.form, title = f.title.trim() || ('[' + O.label + ' title]');
+    const O = this.sampleType(kind), b = this.D.siteBrand(), f = this.state.form, title = f.title.trim() || ('[' + (O.entry ? this.PV.titleCase(O.label) + ' Title' : O.label + ' title') + ']');
     const invite = /^invite|^remind|^prep|^confirm/.test(e.key), deliver = /deliver/.test(e.key);
     return { subject: invite ? e.name + ': ' + title : deliver ? 'Your ' + O.noun + ': ' + title : e.name, preheader: e.goal, eyebrow: O.label, headline: deliver ? (O.replay ? 'Here’s your replay' : 'Here’s your ' + O.noun) : invite ? title : e.name,
-      body: e.goal + '\n\n[A few sentences in ' + b.name + '’s voice, written for the campaign.]', bullets: invite && /invite1|confirm/.test(e.key) ? ['[What they’ll learn]', '[Who it’s for]'] : [], cta: this.O.ctaFor(kind, e.key, {}).text, ps: '' };
+      body: e.goal + '\n\n[A few sentences in ' + b.name + '’s voice, written for the campaign.]', bullets: invite && /invite1|confirm/.test(e.key) ? ['[What they’ll learn]', '[Who it’s for]'] : [], cta: this.sampleCta(kind, e.key), ps: '' };
+  }
+  // The new offer's own type on the sample pages and emails (Erika, Oct 22): a Workbook says "workbook" and "Get the Free
+  // Workbook", not "PDF guide". Samples only: saved offers keep their own words and buttons.
+  sampleType(kind) {
+    const O0 = this.O.offerById(kind), e = this.formEntry(); if (!e) return O0;
+    const N = this.PV.titleCase(e.noun), fam = e.family;
+    const cta = fam === 'download' ? 'Get the Free ' + N : fam === 'request' ? 'Request the ' + N : e.cta;
+    const thanks = fam === 'tool' ? 'Your results are on their way' : fam === 'course' ? 'Lesson 1 is on its way' : fam === 'newsletter' || fam === 'subscribe' ? 'You’re in' : 'Your ' + N + ' Is on Its Way';
+    const thanksBody = fam === 'tool' ? 'Check your inbox for a copy of your results.' : fam === 'course' ? 'Check your inbox for the first lesson.' : fam === 'newsletter' || fam === 'subscribe' ? 'Check your inbox to confirm your email.' : null;
+    return { ...O0, entry: e, label: e.label, noun: e.noun, cta, thanks, thanksBody, thanksCta: fam === 'download' || fam === 'request' ? null : cta };
+  }
+  sampleCta(kind, key) {
+    const O0 = this.O.offerById(kind), O = this.sampleType(kind), t = this.O.ctaFor(kind, key, {}).text;
+    if (!O.entry) return t; if (t === O0.cta) return O.cta;
+    return t.replace('Open the ' + O0.noun, 'Open the ' + O.noun);
+  }
+  // ---- the template preview of the offer piece itself (lib/offer-preview.js) ----
+  piecePreview(e, title, ev) {
+    const b = this.D.siteBrand(), ck = JSON.stringify([e.id, title || '', ev || {}, b.primary, b.secondary, b.accent, b.logo, b.logoWhite, b.name, b.head, b.body]);
+    this._pv = this._pv || {}; if (!this._pv[ck]) this._pv[ck] = this.PV.previewOf(e, b, { title, ...(ev || {}) });
+    return this._pv[ck];
+  }
+  // Thumbnails: scaled HTML, like the landing page samples. Click one to see every page larger (the zoom window).
+  pieceThumbs(e, title, ev) {
+    const pv = this.piecePreview(e, title, ev), TW = { page: 150, slide: 250, email: 160, screen: 270 };
+    return pv.pages.map((p, i) => { const tw = TW[p.size] || 150, sc = tw / p.w, th = Math.round(p.h * sc);
+      return { label: p.label, alt: 'See larger. ' + p.alt, doc: p.html, open: () => this.setState({ zoom: { piece: true, type: e.id, i, title: title || '', ev: ev || null } }),
+        box: 'position:relative;display:block;width:' + tw + 'px;height:' + th + 'px;overflow:hidden;background:#FFFFFF;border-radius:4px;box-shadow:0 2px 10px rgba(8,26,83,.16);',
+        frame: 'position:absolute;top:0;left:0;width:' + p.w + 'px;height:' + p.h + 'px;border:0;transform:scale(' + sc.toFixed(4) + ');transform-origin:0 0;pointer-events:none;' }; });
   }
   sampleEmailDoc(kind, e, i) {
     this._sampleEm = this._sampleEm || {}; const sd = (((this.state.form.seed || {})[kind] || {})[e.key] || {}).copy, b = this.D.siteBrand();
-    const ck = JSON.stringify([kind, e.key, e.name, e.goal, sd, b.primary, b.logo, this.state.form.title]);
+    const ck = JSON.stringify([kind, this.state.form.offerType || '', e.key, e.name, e.goal, sd, b.primary, b.logo, this.state.form.title]);
     if (!this._sampleEm[ck]) this._sampleEm[ck] = this.E.renderEmail({ ...this.sampleEmail(kind, e), ...(sd || {}) }, { brand: b, esp: 'hubspot', href: '#' });
     return this._sampleEm[ck];
   }
@@ -735,6 +764,15 @@ class Component extends DCLogic {
       hasTypeQs: !!(e && e.questions.length),
       partSteps: e ? [['1', 'Make the offer', e.ready === false ? 'The ' + e.noun + ' is an interactive tool. Its builder comes in the next phase.' : e.inApp ? 'CatalystOS writes the ' + e.noun + ' here, or you make it in the ' + B(e).label + '.' : e.builder === 'webinar' ? 'The event is planned here; the Webinar Creator and Event Graphics make the session’s video and graphics.' : 'Made in the ' + B(e).label + ', by CatalystOS or by you.'], ['2', 'Build the funnel', 'Landing and thank-you pages, a timed email sequence and CTA popups around the ' + e.noun + '.'], ['3', 'Launch', 'A checklist: pages, sequence, popups and approvals. Download everything, or paste the popups on your own site.']].map(([n, t, d]) => ({ n, t, d })) : [] };
   }
+  // The template preview of the offer piece (new-offer screen: prefix tpl; Funnel tab with nothing linked yet: funTpl).
+  pieceTplVals(e, title, ev, pre) {
+    if (!e || !this.PV) return { [pre + 'On']: false, [pre + 'Thumbs']: [] };
+    const a = e.label.replace(/^(\w)/, (m) => m.toUpperCase()), an = /^[aeiou]/i.test(e.noun) ? 'an ' : 'a ';
+    return { [pre + 'On']: true, [pre + 'Head']: 'The ' + this.PV.titleCase(a) + (pre === 'funTpl' ? ' · template' : ''), [pre + 'Coming']: e.ready === false,
+      [pre + 'Text']: e.ready === false ? 'A sample of the input and result screens in ' + this.D.clientName() + '’s brand. Interactive tools come in the next phase.'
+        : 'What ' + an + e.noun + ' looks like, in ' + this.D.clientName() + '’s brand. Everything in [brackets] is filled in when it’s made. Click a page to see it larger.',
+      [pre + 'Thumbs']: this.pieceThumbs(e, title, e.isEvent ? ev : null) };
+  }
   // ---------- Part 1: the piece ----------
   pieceVals(o, st, e, isDoc) {
     const B = this.CAT.builderOf(e), pc = o.piece, sf = st.sfList[B.app] || null, hand = this.CAT.handsOff(e);
@@ -766,7 +804,8 @@ class Component extends DCLogic {
     const planned = !o.emails.length, seq = planned ? this.D.seqFor(o) : o.emails;
     const pops = this.PK.normalizeAll(this.popupsOf(o));
     const go = (t) => () => this.setState({ tab: t, field: null });
-    return { funHasOffer: !!have, funNoOffer: !have, funDocMini: docMini, funHasMini: !!docMini, funHasCard: !docMini && !!have,
+    return { ...(have ? { funTplOn: false, funTplThumbs: [] } : this.pieceTplVals(e, (o.strategy || {}).title || (o.name !== e.label ? o.name : '') || '', { date: o.date, time: o.time, where: o.where }, 'funTpl')),
+      funHasOffer: !!have, funNoOffer: !have, funDocMini: docMini, funHasMini: !!docMini, funHasCard: !docMini && !!have,
       funOfferTitle: isDoc ? (dk && dk.title) || o.name : pc ? pc.title || e.label : '', funOfferMeta: isDoc ? 'Written here · ' + ((dk && dk.sections) || []).length + ' sections' : pc ? 'In Saved Files · ' + B.label : '',
       funThumb: pc && pc.thumb ? pc.thumb : '', funHasThumb: !!(pc && pc.thumb && !isDoc), funOpen: pc && pc.openUrl ? pc.openUrl : '', funHasOpen: !!(pc && pc.openUrl && !isDoc),
       funApprovedAria: have && have.approved ? 'true' : 'false', funTrack: track(!!(have && have.approved)), funKnob: knob(!!(have && have.approved)),
@@ -847,11 +886,15 @@ class Component extends DCLogic {
       peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
       funnelTitle: this.formEntry() ? 'How the ' + this.formEntry().label + ' offer comes together' : 'How a ' + K.noun + ' offer comes together',
+      ...this.pieceTplVals(this.formEntry(), f.title.trim(), { date: f.date, time: f.time, where: f.where }, 'tpl'),
       funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: K.replay ? ({ offer: 'Sign-up page: the replay video with an arrow to play it, what they’ll learn, the speakers, the form.', video: 'The replay itself: the video, its chapters and the next step.' }[k] || '') : { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
       funnelEmails: this.D.seqFor({ kind: f.kind, offerType: f.offerType, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
         open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
-    if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
-      Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk, st.zoom.tpl),
+    if (st.zoom && st.zoom.piece) { const ze = this.CAT.byId(st.zoom.type), pv = ze && this.piecePreview(ze, st.zoom.title, st.zoom.ev);
+      Object.assign(vals, { hasZoom: !!pv, zIsPiece: true, zNotPiece: false, zIsLaptop: false, zIsPhone: false, zoomTitle: pv ? 'The ' + pv.label + ' · template' : '', zoomText: 'Sample layout in ' + base.clientName + '’s brand. Everything in [brackets] is filled in when the ' + (pv ? pv.noun : 'offer') + ' is made.',
+        zoomDoc: pv ? this.PV.stackDoc(pv, st.zoom.i) : '', closeZoom: () => this.setState({ zoom: null }), stopZoom: (e) => e.stopPropagation() }); }
+    else if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+      Object.assign(vals, { hasZoom: true, zIsPiece: false, zNotPiece: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + this.sampleType(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk, st.zoom.tpl),
         closeZoom: () => this.setState({ zoom: null }), stopZoom: (e) => e.stopPropagation(), zIsLaptop: zLap, zIsPhone: !zLap, zLapPressed: zLap ? 'true' : 'false', zPhPressed: zLap ? 'false' : 'true', zLapBtn: segB(zLap), zPhBtn: segB(!zLap), zoomLaptop: () => this.setState({ zDev: 'laptop' }), zoomPhone: () => this.setState({ zDev: 'phone' }) }); }
     else vals.hasZoom = false;
     const se = st.seqEdit;
