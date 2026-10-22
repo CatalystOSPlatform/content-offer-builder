@@ -11,18 +11,39 @@
 <script src="./support.js"></script>
 <script src="https://catalystos-dashboard-staging.vercel.app/saved-bar.js"></script>
 <script src="https://catalystos-dashboard-staging.vercel.app/catalyst-create.js"></script>
+<script src="https://catalystos-dashboard-staging.vercel.app/catalyst-shell.js"></script>
 <style data-cos-wrap>:where(body *){text-wrap:pretty}:where(h1,h2,h3,h4,h5,h6,[role="heading"]){text-wrap:balance}:where(body,body *){font-synthesis:none}</style>
 </head>
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="https://catalystos-dashboard-staging.vercel.app/catalyst-ui.css">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}
+/* Task bar (platform standard): 32px, radius 9, Manrope 700 12.5px; Download navy; Save orange and last. */
+.cob-tb{appearance:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:9px;border:1px solid rgba(8,26,83,0.14);background:#FFFFFF;color:#081A53;font:700 12.5px Manrope,sans-serif;white-space:nowrap;box-sizing:border-box}
+.cob-tb:disabled{opacity:.55;cursor:not-allowed}.cob-tb-del{border-color:rgba(180,35,24,0.35);color:#B42318}
+.cob-tb-navy{border-color:transparent;color:#FFFFFF;background:linear-gradient(180deg,#1B2C6B 0%,#081A53 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.18),inset 0 -2px 3px rgba(0,0,20,0.35)}
+.cob-tb-save{border-color:transparent;color:#FFFFFF;background:linear-gradient(180deg,#FF7A45 0%,#E8460F 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -2px 3px rgba(140,30,0,0.35)}
+/* Offer type picker: equal-size blocks, like the other apps' home cards. */
+.cob-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));grid-auto-rows:1fr;gap:12px}
+.cob-cat{appearance:none;text-align:left;cursor:pointer;background:#FFFFFF;border:1.5px solid #DCE0EA;border-radius:16px;padding:14px 14px 16px;display:flex;flex-direction:column;gap:7px;color:#081A53;font-family:Inter,'Public Sans',sans-serif;transition:transform .12s,box-shadow .12s,border-color .12s;min-width:0;min-height:148px;box-sizing:border-box}
+.cob-cat:hover{transform:translateY(-2px);border-color:#6818F8;box-shadow:0 14px 28px -16px rgba(104,24,248,0.55)}
+.cob-cat-d{font-size:13px;line-height:1.45;color:#3A4159;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+@media (prefers-reduced-motion: reduce){.cob-cat{transition:none}.cob-cat:hover{transform:none}}
+.cob-layout{flex:1;display:grid;grid-template-columns:380px minmax(0,1fr);min-height:0}
+.cob-main{min-width:0;padding:22px 26px 110px;display:flex;flex-direction:column;gap:16px}
+.cob-2col{display:grid;grid-template-columns:470px minmax(0,1fr);gap:14px;align-items:start}
+.cob-seq{display:grid;grid-template-columns:24px 170px minmax(0,1fr) minmax(0,1fr) 110px;gap:10px;padding:8px 0;border-top:1px solid #EEF0F4;font-size:13px;align-items:center}
+@media (max-width: 899px){.cob-layout{grid-template-columns:minmax(0,1fr)}.cob-layout>aside{border-right:0!important;border-bottom:1px solid #E6E8EC}.cob-main{padding:16px 16px 110px}.cob-2col{grid-template-columns:minmax(0,1fr)}[data-cos-taskbar]{padding:6px 16px!important}}
+@media (max-width: 480px){.cob-2col [data-dev]{flex-wrap:wrap}.cob-2col [data-dev]>button,.cob-2col [data-dev]>div>button[aria-pressed]{zoom:.8}}
+@media (max-width: 640px){.cob-seq{grid-template-columns:24px minmax(0,1fr);row-gap:2px}.cob-seq>.cob-seq-x{grid-column:2}}
 /* CatalystOS side panels (same in every app): 380px, white, stays in view below the headers and scrolls on its own. */
 @media (min-width: 900px) { .cos-sidepanel { position: sticky !important; top: 0; height: 100vh; max-height: 100vh; overflow-y: auto; align-self: start; box-sizing: border-box; } }
 </style>
 </helmet>
 <div style="min-height: 100vh; font-family: 'Public Sans', sans-serif; color: #14182B; display: flex; flex-direction: column; background-color: #FAF9FD; background-image: radial-gradient(#D6D2E4 1px, transparent 1px); background-size: 12px 12px;">
+<div data-cos-shell-mount style="flex: none;"></div>
 <sc-if value="{{ showShell }}" hint-placeholder-val="{{ true }}">
 <dc-import name="Shell" app-name="Content Offer Builder" agency="{{ agency }}" client-name="{{ clientName }}" client-id="{{ clientId }}" email="{{ email }}" back-href="{{ backHref }}" clients="{{ clients }}" on-pick-client="{{ pickClient }}" on-sign-out="{{ signOut }}"></dc-import>
 </sc-if>
@@ -38,21 +59,27 @@
 </sc-if>
 
 <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
-<div style="flex: 1; display: grid; grid-template-columns: 380px minmax(0, 1fr); min-height: 0;">
+<!-- Task bar (platform standard): right-aligned; New Content Offer · Delete · Download (navy) · Save (orange, last). -->
+<div data-cos-taskbar role="toolbar" aria-label="Content Offer Builder actions" style="position: relative; z-index: 29; flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; min-height: 52px; box-sizing: border-box; padding: 6px 24px; background: #FFFFFF; border-bottom: 1px solid rgba(8,26,83,0.08);">
+<sc-if value="{{ isOffer }}" hint-placeholder-val="{{ false }}"><span role="status" aria-live="polite" style="font-size: 12px; color: #4A5168; margin-right: 4px;">{{ savedText }}</span></sc-if>
+<button type="button" class="cob-tb" onClick="{{ newOffer }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>New Content Offer</button>
+<sc-if value="{{ isOffer }}" hint-placeholder-val="{{ false }}">
+<button type="button" class="cob-tb cob-tb-del" onClick="{{ removeOffer }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>{{ removeLabel }}</button>
+<button data-cos-download="" type="button" class="cob-tb cob-tb-navy" onClick="{{ download }}" disabled="{{ cantDownload }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5"></path><path d="M12 15V3"></path></svg>Download</button>
+<button data-cos-save="" type="button" class="cob-tb cob-tb-save" onClick="{{ saveNow }}" disabled="{{ saveDisabled }}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8"></path><path d="M7 3v5h8"></path></svg>Save</button>
+</sc-if>
+</div>
+<div class="cob-layout">
 
 <aside aria-label="Content offers" class="cos-sidepanel" style="background: #FFFFFF; border-right: 1px solid #E6E8EC; padding: 18px 14px; display: flex; flex-direction: column; gap: 10px;">
-<button type="button" onClick="{{ newOffer }}" style="height: 42px; border: none; border-radius: 10px; background: linear-gradient(135deg,#1921FE,#6818F8); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">New content offer +</button>
-<sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ isNewForm }}" hint-placeholder-val="{{ true }}">
 <section aria-labelledby="cob-new" style="display: flex; flex-direction: column; gap: 14px; padding: 14px; border: 1px solid #DCCCFE; border-radius: 14px; background: #FBF9FF;">
-<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Pick the campaign and the kind of offer, add anything we should know, then click <b>Let CatalystOS Create This</b>.</p></div>
+<div><h1 id="cob-new" style="margin: 0 0 4px; font: 800 16px Manrope, sans-serif; color: #081A53;">Plan a content offer</h1><p style="margin: 0; font-size: 12.5px; color: #4A5168; line-height: 1.5;">Add anything we should know, then click <b>Let CatalystOS Create This</b> to plan it, or make it yourself.</p></div>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Campaign</span>
 <select value="{{ campVal }}" onChange="{{ setCamp }}" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF;"><option value="none">No campaign (we choose a timely direction)</option><sc-for list="{{ campOptions }}" as="co" hint-placeholder-count="2"><option value="{{ co.id }}">{{ co.label }}</option></sc-for></select></label>
 <sc-if value="{{ noCamps }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 12px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 7px 10px; line-height: 1.45;">This client has no campaigns in Brand Command yet. Add one there, or go ahead without a campaign.</p></sc-if>
-<fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px;"><legend class="cob-lbl" style="margin-bottom: 8px;">Kind of offer</legend>
-<sc-for list="{{ kindCards }}" as="kc" hint-placeholder-count="4">
-<button type="button" onClick="{{ kc.pick }}" aria-pressed="{{ kc.pressed }}" style="{{ kc.style }}"><span style="{{ kc.iconBox }}"><img src="{{ kc.icon }}" alt="" width="22" height="22" style="display: block;"></span><span style="display: flex; flex-direction: column; gap: 3px; min-width: 0;"><span style="font: 800 14px Manrope, sans-serif; color: #081A53;">{{ kc.label }}</span><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ kc.desc }}</span></span></button>
-</sc-for>
-</fieldset>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 12px; background: #FFFFFF; border: 2px solid #6818F8;"><span class="cob-lbl">Offer type</span><strong style="font: 800 15px Manrope, sans-serif; color: #081A53;">{{ newTypeLabel }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ newTypeLine }}</span><span style="font: 700 12px Manrope, sans-serif; color: #3B1A8F;">{{ newTypeBuilder }}</span><button type="button" onClick="{{ changeType }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; align-self: flex-start; height: 32px;">Change Offer Type</button></div>
+<sc-for list="{{ typeQs }}" as="tq" hint-placeholder-count="1"><label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ tq.label }}</span><sc-if value="{{ tq.short }}" hint-placeholder-val="{{ true }}"><input value="{{ tq.value }}" onInput="{{ tq.set }}" placeholder="{{ tq.placeholder }}" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"></sc-if><sc-if value="{{ tq.long }}" hint-placeholder-val="{{ false }}"><textarea value="{{ tq.value }}" onInput="{{ tq.set }}" rows="3" placeholder="{{ tq.placeholder }}" style="border-radius: 9px; border: 1px solid #8A90A3; padding: 8px 10px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B; resize: vertical;"></textarea></sc-if></label></sc-for>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Working title (optional)</span><input value="{{ titleVal }}" onInput="{{ setTitle }}" placeholder="We suggest one if left blank" style="height: 40px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 12px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B;" /></label>
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Topic or notes (optional)</span><textarea value="{{ topicVal }}" onInput="{{ setTopic }}" rows="3" placeholder="What it covers, who it’s for, anything we must include" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B; resize: vertical;"></textarea></label>
 <sc-if value="{{ isEvent }}" hint-placeholder-val="{{ false }}">
@@ -69,6 +96,7 @@
 <sc-for list="{{ speakerPick }}" as="sk" hint-placeholder-count="2"><label style="{{ sk.style }}"><input type="checkbox" checked="{{ sk.on }}" onChange="{{ sk.toggle }}" style="accent-color: #6818F8; width: 16px; height: 16px; flex: none;" /><span style="{{ sk.faceStyle }}"><sc-if value="{{ sk.hasImg }}" hint-placeholder-val="{{ false }}"><img src="{{ sk.img }}" alt="" style="width: 100%; height: 100%; object-fit: cover;"></sc-if><sc-if value="{{ sk.noImg }}" hint-placeholder-val="{{ true }}">{{ sk.initials }}</sc-if></span><span style="display: flex; flex-direction: column; min-width: 0;"><span style="font: 700 13px Manrope, sans-serif; color: #14182B;">{{ sk.name }}</span><span style="font-size: 12px; color: #4A5168;">{{ sk.title }}</span></span></label></sc-for>
 </fieldset></sc-if>
 <sc-if value="{{ noSpeakerPick }}" hint-placeholder-val="{{ true }}"><label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">{{ peopleLabel }}</span><input value="{{ peopleVal }}" onInput="{{ setPeople }}" placeholder="From your Brand Command team" style="height: 38px; border-radius: 10px; border: 1px solid #C9CDD8; padding: 0 12px; font: 500 13px 'Public Sans', sans-serif;" /></label></sc-if>
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #E6E8EC; padding-top: 12px;"><button type="button" onClick="{{ startManual }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; align-self: flex-start;">I’ll Make This Myself</button><span style="font-size: 12px; color: #4A5168; line-height: 1.45;">Saves the offer without AI. Or click Let CatalystOS Create This (bottom right) to plan it.</span></div>
 </section>
 </sc-if>
 <span class="cob-lbl" style="margin-top: 6px; color: #59627A;">{{ offersLabel }}</span>
@@ -78,12 +106,22 @@
 </sc-for>
 </aside>
 
-<main style="min-width: 0; padding: 22px 26px; display: flex; flex-direction: column; gap: 16px;">
+<main class="cob-main">
+<sc-if value="{{ isPicker }}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="cob-pick" style="display: flex; flex-direction: column; gap: 14px; max-width: 1240px;">
+<div style="display: flex; flex-direction: column; gap: 4px;"><h1 id="cob-pick" style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53; text-wrap: balance;">Start a new content offer: what kind?</h1><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.5;">{{ pickCount }}, grouped by what they do. Each one is made in the builder that suits it; this app builds the funnel around it.</p></div>
+<label style="display: flex; flex-direction: column; gap: 6px; max-width: 520px;"><span class="cob-lbl">Search offer types</span><input type="search" value="{{ pickQ }}" onInput="{{ setPickQ }}" placeholder="e.g. calculator, report, webinar" aria-describedby="cob-pick-n" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%; height: 42px; font-size: 14px;"></label>
+<span id="cob-pick-n" role="status" aria-live="polite" style="font-size: 12.5px; color: #4A5168;">{{ pickResult }}</span>
+<sc-if value="{{ pickNone }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13.5px; color: #4A5168;">No offer types match. Try another word.</p></sc-if>
+<sc-for list="{{ pickGroups }}" as="pg" hint-placeholder-count="2"><section aria-labelledby="{{ pg.headId }}" style="display: flex; flex-direction: column; gap: 10px;"><h2 id="{{ pg.headId }}" style="margin: 6px 0 0; font: 800 15px Manrope, sans-serif; color: #081A53;">{{ pg.title }}</h2><div class="cob-cats"><sc-for list="{{ pg.items }}" as="it" hint-placeholder-count="4"><button type="button" class="cob-cat" onClick="{{ it.pick }}" aria-label="{{ it.aria }}"><span style="{{ it.badgeStyle }}">{{ it.builder }}</span><span style="font: 800 16px Manrope, sans-serif; line-height: 1.25; text-wrap: balance;">{{ it.label }}</span><span class="cob-cat-d">{{ it.oneLine }}</span></button></sc-for></div></section></sc-for>
+</section>
+</sc-if>
 
-<sc-if value="{{ isNew }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ isNewForm }}" hint-placeholder-val="{{ false }}">
 <section aria-labelledby="cob-how" style="display: flex; flex-direction: column; gap: 16px; max-width: 1100px;">
 <h2 id="cob-how" style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53;">{{ funnelTitle }}</h2>
-<div style="display: grid; grid-template-columns: 470px minmax(0, 1fr); gap: 14px; align-items: start;">
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%,240px), 1fr)); gap: 12px;"><sc-for list="{{ partSteps }}" as="ps" hint-placeholder-count="3"><li style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><span style="display: flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 50%; background: #F1EBFF; color: #3B1A8F; font: 800 12px Manrope, sans-serif; display: flex; align-items: center; justify-content: center;">{{ ps.n }}</span><strong style="font: 800 14px Manrope, sans-serif; color: #081A53;">{{ ps.t }}</strong></span><span style="font-size: 12.5px; color: #4A5168; line-height: 1.5;">{{ ps.d }}</span></li></sc-for></ol>
+<div class="cob-2col">
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h3 style="margin: 0; font: 800 15px Manrope, sans-serif; color: #081A53;">Landing pages</h3>
 <sc-if value="{{ isWebinar }}" hint-placeholder-val="{{ false }}"><fieldset style="border: 0; padding: 0; margin: 0 0 6px; display: flex; flex-direction: column; gap: 10px;"><legend class="cob-lbl" style="margin-bottom: 8px;">Choose a landing page template</legend>
 <sc-for list="{{ tplCards }}" as="tc" hint-placeholder-count="3"><div data-dev="1" style="display: flex; align-items: center; gap: 8px;"><div style="{{ tc.style }}"><button type="button" onClick="{{ tc.pick }}" aria-pressed="{{ tc.pressed }}" aria-label="{{ tc.label }}" style="display: flex; flex-direction: column; align-items: center; background: none; border: 0; padding: 0; cursor: pointer;"><span style="display: block; padding: 8px 8px 10px; background: #1C1F26; border-radius: 10px 10px 4px 4px;"><span style="position: relative; display: block; width: 320px; height: 200px; overflow: hidden; background: #FFFFFF; border-radius: 2px;"><iframe title="" aria-hidden="true" tabindex="-1" srcdoc="{{ tc.doc }}" style="position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform: scale(0.25); transform-origin: 0 0; pointer-events: none;"></iframe></span></span><span style="display: block; width: 370px; max-width: 100%; height: 9px; background: linear-gradient(180deg,#D7DAE1,#A9AEBA); border-radius: 0 0 9px 9px;"></span></button><span style="align-self: stretch; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 0 6px;"><span style="display: flex; flex-direction: column; gap: 2px;"><strong style="font: 700 13.5px Manrope, sans-serif; color: #14182B;">{{ tc.name }}</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ tc.desc }}</span></span><button type="button" onClick="{{ tc.zoom }}" aria-label="{{ tc.zoomLabel }}" style="flex: none; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 700 12px Manrope, sans-serif; cursor: zoom-in;">See larger</button></span></div><div role="group" aria-label="Scroll the page" style="display: flex; flex-direction: column; gap: 8px; align-self: center;"><button type="button" onClick="{{ scrollUp }}" aria-label="Scroll up" title="Scroll up" style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg></button><button type="button" onClick="{{ scrollDown }}" aria-label="Scroll down" title="Scroll down" style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button></div></div></sc-for>
@@ -100,10 +138,6 @@
 <sc-if value="{{ isOffer }}" hint-placeholder-val="{{ false }}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between;">
 <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><h1 style="margin: 0; font: 800 20px Manrope, sans-serif; color: #081A53;">{{ offerName }}</h1><span style="font-size: 12.5px; color: #4A5168;">{{ offerMeta }}</span></div>
-<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-<span role="status" style="font-size: 12px; color: #4A5168;">{{ savedText }}</span>
-<button type="button" onClick="{{ removeOffer }}" style="height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid rgba(180,35,24,0.35); background: #FFFFFF; color: #B42318; font: 700 13px Manrope, sans-serif; cursor: pointer;">{{ removeLabel }}</button>
-</div>
 </div>
 <div role="tablist" aria-label="Offer sections" style="display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #E6E8EC; padding-bottom: 8px;">
 <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{ tb.selected }}" onClick="{{ tb.pick }}" style="{{ tb.style }}">{{ tb.label }}<span style="{{ tb.badgeStyle }}">{{ tb.badge }}</span></button></sc-for>
@@ -111,6 +145,8 @@
 
 <sc-if value="{{ tabStrategy }}" hint-placeholder-val="{{ true }}">
 <section aria-label="Strategy" style="display: flex; flex-direction: column; gap: 14px; max-width: 1150px;">
+<sc-if value="{{ noStrategy }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">No strategy yet</h2><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS Create This and the Strategist plans the objective, audience, angle, pages and email sequence, then the funnel is written from it.</p></div></sc-if>
+<sc-if value="{{ hasStrategy }}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;">
 <div style="display: flex; align-items: center; gap: 10px;"><span style="{{ stratPillStyle }}">{{ stratPill }}</span><span style="font-size: 12.5px; color: #4A5168;">{{ stratBy }}</span></div>
 <div style="display: flex; align-items: center; gap: 12px;"><span id="cob-sa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve strategy</span><button type="button" role="switch" aria-checked="{{ stratApprovedAria }}" aria-labelledby="cob-sa" onClick="{{ toggleStrat }}" style="{{ stratTrack }}"><span style="{{ stratKnob }}"></span></button></div>
@@ -136,11 +172,25 @@
 <label style="display: flex; flex-direction: column; gap: 6px;"><span class="cob-lbl">Changes you’d like (optional)</span><textarea value="{{ noteVal }}" onInput="{{ setNote }}" rows="3" aria-describedby="cob-note-h" placeholder="e.g. Aim at RIA founders under $500M, drop the last-chance email, lead with compliance" style="border-radius: 10px; border: 1px solid #C9CDD8; padding: 9px 12px; font: 500 13.5px 'Public Sans', sans-serif; resize: vertical;"></textarea></label>
 <span id="cob-note-h" style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">We use these the next time you click Let CatalystOS Create This.</span>
 </div>
+</sc-if>
 </section>
 </sc-if>
 
 <sc-if value="{{ tabDoc }}" hint-placeholder-val="{{ false }}">
 <section aria-label="{{ docLabel }}" style="display: flex; flex-direction: column; gap: 12px;">
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; max-width: 900px;">
+<span class="cob-lbl">Part 1 · Make the offer</span>
+<h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">{{ pieceLabel }} · made in the {{ pieceBuilder }}</h2>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ pieceWhat }}</p>
+<sc-if value="{{ pieceComing }}" hint-placeholder-val="{{ false }}"><p role="note" style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">Interactive tool — coming in the next phase. Calculators, assessments and scorecards will use real formulas and rule-based scoring, never AI math. Until then you can plan this offer and build its funnel.</p></sc-if>
+<sc-if value="{{ pieceWebinar }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">The event and its funnel are planned here. The Webinar Creator makes the session’s video, and Event Graphics makes the Zoom slides, banners and posts.</p><div style="display: flex; flex-wrap: wrap; gap: 8px;"><a href="{{ webinarCreatorUrl }}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Open the Webinar Creator</a><button type="button" onClick="{{ openGraphics2 }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Open Event Graphics</button></div></sc-if>
+<sc-if value="{{ pieceExternal }}" hint-placeholder-val="{{ true }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ pieceHow }}</p><div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><button type="button" onClick="{{ makeMyself }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">I’ll Make This Myself</button></div>
+<sc-if value="{{ pieceNoteOn }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 12.5px; color: #4A5168;">{{ pieceNote }}</p></sc-if>
+<sc-if value="{{ hasPiece }}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center; border-top: 1px solid #EEF0F4; padding-top: 12px;"><sc-if value="{{ hasPieceThumb }}" hint-placeholder-val="{{ false }}"><img src="{{ pieceThumb }}" alt="" width="120" style="flex: none; width: 120px; height: auto; border-radius: 8px; border: 1px solid #E6E8EC;"></sc-if><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 220px;"><strong style="font: 800 14.5px Manrope, sans-serif; color: #081A53;">{{ pieceTitle }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ pieceMeta }}</span><span style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;"><sc-if value="{{ hasPieceOpen }}" hint-placeholder-val="{{ false }}"><a href="{{ pieceOpen }}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px;">Open in the {{ pieceBuilder }}</a></sc-if><button type="button" onClick="{{ unlinkPiece }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px; color: #B42318; border-color: rgba(180,35,24,0.35);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>{{ unlinkLabel }}</button></span></div><span style="display: flex; align-items: center; gap: 10px;"><span id="cob-pca" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve {{ pieceNoun }}</span><button type="button" role="switch" aria-checked="{{ pieceApprovedAria }}" aria-labelledby="cob-pca" onClick="{{ togglePiece }}" style="{{ pieceTrack }}"><span style="{{ pieceKnob }}"></span></button></span></div></sc-if>
+<div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid #EEF0F4; padding-top: 12px;"><label style="display: flex; flex-direction: column; gap: 6px; max-width: 520px;"><span class="cob-lbl">Link a finished piece from Saved Files</span><select onChange="{{ pickSaved }}" value="" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"><option value="">Choose from the {{ pieceBuilder }}’s saved files</option><sc-for list="{{ sfOptions }}" as="so" hint-placeholder-count="2"><option value="{{ so.id }}">{{ so.label }}</option></sc-for></select></label><sc-if value="{{ sfLoading }}" hint-placeholder-val="{{ false }}"><span role="status" style="font-size: 12px; color: #4A5168;">Loading Saved Files…</span></sc-if><sc-if value="{{ sfEmpty }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12px; color: #4A5168;">Nothing from the {{ pieceBuilder }} in Saved Files for this client yet.</span></sc-if><button type="button" onClick="{{ refreshSaved }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 30px; align-self: flex-start; font-size: 12px;">Refresh the List</button></div>
+</sc-if>
+<sc-if value="{{ pieceInApp }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ pieceHow }}</p><div><button type="button" onClick="{{ makeMyself }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">I’ll Make This Myself in the {{ pieceBuilder }}</button></div></sc-if>
+</div>
 <sc-if value="{{ docIdle }}" hint-placeholder-val="{{ false }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 760px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">The {{ docNoun }} isn’t written yet</h2><p style="margin: 0; font-size: 13.5px; color: #4A5168; line-height: 1.55;">Click Let CatalystOS Create This. We write and design the {{ docNoun }} as real pages in this client’s brand, from the strategy and Brand Command.</p></div></sc-if>
 <sc-if value="{{ docWriting }}" hint-placeholder-val="{{ false }}"><div role="status" style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; max-width: 760px;"><span style="width: 20px; height: 20px; border: 3px solid #DCCCFE; border-top-color: #6818F8; border-radius: 50%; animation: cob-spin 0.8s linear infinite;"></span><span style="font: 700 13.5px Manrope, sans-serif; color: #081A53;">Writing and designing the {{ docNoun }}…</span></div></sc-if>
 <sc-if value="{{ hasDoc }}" hint-placeholder-val="{{ true }}">
@@ -163,6 +213,52 @@
 </div>
 <iframe title="{{ docFrameTitle }}" srcdoc="{{ docSrc }}" style="width: 100%; max-width: 900px; height: 1180px; align-self: center; border: 1px solid #E6E8EC; border-radius: 12px; background: #E9EBF0;"></iframe>
 <label style="display: flex; flex-direction: column; gap: 6px; max-width: 900px; align-self: center; width: 100%;"><span class="cob-lbl">Changes you’d like the next time CatalystOS writes it (optional)</span><input value="{{ docNoteVal }}" onInput="{{ setDocNote }}" placeholder="e.g. More practical, add a checklist, shorter sections" style="height: 38px; border-radius: 9px; border: 1px solid #C9CDD8; padding: 0 10px; font: 500 13px 'Public Sans', sans-serif;" /></label>
+</sc-if>
+</section>
+</sc-if>
+
+<sc-if value="{{ tabFunnel }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Funnel" style="display: flex; flex-direction: column; gap: 14px; max-width: 1100px;">
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">Part 2 · The funnel around the offer: the finished piece, its landing and thank-you pages, the timed email sequence and CTA popups.</p>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">1. The offer: {{ funPieceLabel }}</h2><sc-if value="{{ funHasOffer }}" hint-placeholder-val="{{ true }}"><span style="display: flex; align-items: center; gap: 10px;"><span id="cob-fa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve</span><button type="button" role="switch" aria-checked="{{ funApprovedAria }}" aria-labelledby="cob-fa" onClick="{{ funToggle }}" style="{{ funTrack }}"><span style="{{ funKnob }}"></span></button></span></sc-if></div>
+<sc-if value="{{ funNoOffer }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ funNoOfferText }}</p><div><button type="button" onClick="{{ funGoPiece }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Go to the {{ funPieceLabel }}</button></div></sc-if>
+<sc-if value="{{ funHasMini }}" hint-placeholder-val="{{ false }}"><span style="font-size: 12.5px; color: #4A5168;">{{ funOfferMeta }}</span><iframe title="Preview of the {{ funPieceLabel }}" srcdoc="{{ funDocMini }}" style="width: 100%; height: 520px; border: 1px solid #E6E8EC; border-radius: 10px; background: #E9EBF0;"></iframe><div><button type="button" onClick="{{ funGoPiece }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Open the {{ funPieceLabel }}</button></div></sc-if>
+<sc-if value="{{ funHasCard }}" hint-placeholder-val="{{ false }}"><div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: center;"><sc-if value="{{ funHasThumb }}" hint-placeholder-val="{{ false }}"><img src="{{ funThumb }}" alt="" width="160" style="flex: none; width: 160px; height: auto; border-radius: 8px; border: 1px solid #E6E8EC;"></sc-if><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><strong style="font: 800 14.5px Manrope, sans-serif; color: #081A53;">{{ funOfferTitle }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ funOfferMeta }}</span><sc-if value="{{ funHasOpen }}" hint-placeholder-val="{{ false }}"><a href="{{ funOpen }}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px; align-self: flex-start;">Open the Saved File</a></sc-if></div></div></sc-if>
+</div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">2. Landing and thank-you pages</h2><button type="button" onClick="{{ funGoPages }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px;">Edit the Pages</button></div>
+<sc-if value="{{ funNoPages }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">Not written yet. Click Let CatalystOS Create This on this tab: the Web Builder’s conversion engine writes them from the finished offer.</p></sc-if>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column;"><sc-for list="{{ funPages }}" as="fpg" hint-placeholder-count="2"><li style="display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF0F4; font-size: 13px;"><span style="font-weight: 700; color: #14182B;">{{ fpg.title }}</span><span style="{{ fpg.style }} font-weight: 700;">{{ fpg.status }}</span></li></sc-for></ul></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">3. Timed email sequence</h2><button type="button" onClick="{{ funGoEmails }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px;">Edit the Emails</button></div>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ funSeqNote }}</p>
+<div role="list" aria-label="Email sequence"><sc-for list="{{ funSeq }}" as="fs" hint-placeholder-count="5"><div role="listitem" class="cob-seq"><span style="font-weight: 800; color: #3B1A8F;">{{ fs.n }}</span><strong style="font: 800 12.5px Manrope, sans-serif; color: #081A53;">{{ fs.day }}</strong><span class="cob-seq-x" style="font-weight: 700; color: #14182B;">{{ fs.name }}</span><span class="cob-seq-x" style="color: #4A5168;">To: {{ fs.to }}</span><span class="cob-seq-x" style="color: #4A5168; font-weight: 700;">{{ fs.status }}</span></div></sc-for></div></div>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">4. CTA popups</h2><button type="button" onClick="{{ funGoPopups }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px;">Edit the Popups</button></div>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">{{ funPopsNote }}</p>
+<ul style="list-style: none; margin: 0; padding: 0;"><sc-for list="{{ funPops }}" as="fpp" hint-placeholder-count="2"><li style="display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 0; border-top: 1px solid #EEF0F4; font-size: 13px;"><strong style="font: 800 12.5px Manrope, sans-serif; color: #081A53; min-width: 150px;">{{ fpp.trig }}</strong><span style="color: #14182B;">{{ fpp.headline }}</span></li></sc-for></ul></div>
+<div><button type="button" onClick="{{ funGoLaunch }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 9px; border: none; background: linear-gradient(180deg,#1B2C6B 0%,#081A53 100%); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Go to the Launch Checklist</button></div>
+</section>
+</sc-if>
+
+<sc-if value="{{ tabPopups }}" hint-placeholder-val="{{ false }}">
+<section aria-label="CTA popups" style="display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 12px 16px;"><div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><strong style="font: 800 15px Manrope, sans-serif; color: #081A53;">CTA popups</strong><span style="font-size: 12.5px; color: #4A5168; line-height: 1.45;">{{ popWhere }}</span></div><span style="display: flex; align-items: center; gap: 10px;"><span id="cob-ppa" style="font: 700 13px Manrope, sans-serif; color: #081A53;">Approve popups</span><button type="button" role="switch" aria-checked="{{ popApprovedAria }}" aria-labelledby="cob-ppa" onClick="{{ togglePopups }}" style="{{ popTrack }}"><span style="{{ popKnob }}"></span></button></span></div>
+<sc-if value="{{ popSuggested }}" hint-placeholder-val="{{ false }}"><p role="note" style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">Suggested from the offer, not saved yet. Edit and save any popup to keep them, or click Let CatalystOS Create This to have the Writer write them.</p></sc-if>
+<sc-if value="{{ popNone }}" hint-placeholder-val="{{ false }}"><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">No popups. Add one, or click Let CatalystOS Create This.</p></sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;" role="group" aria-label="Popups"><sc-for list="{{ popTabs }}" as="pt2" hint-placeholder-count="2"><button type="button" onClick="{{ pt2.pick }}" aria-pressed="{{ pt2.current }}" style="{{ pt2.style }}">{{ pt2.label }}</button></sc-for><sc-if value="{{ popCanAdd }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ addPopup }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 34px;">Add a Popup</button></sc-if></div>
+<sc-if value="{{ popHas }}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start;">
+<div style="flex: 1 1 340px; min-width: 0; background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+<label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">When it shows</span><select value="{{ popTrigger }}" onChange="{{ setPopTrigger }}" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"><sc-for list="{{ popTriggerOptions }}" as="to" hint-placeholder-count="3"><option value="{{ to.id }}">{{ to.label }}</option></sc-for></select></label>
+<sc-if value="{{ popHasValue }}" hint-placeholder-val="{{ true }}"><label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">{{ popValueLabel }}</span><input type="number" inputmode="numeric" value="{{ popValue }}" onInput="{{ setPopValue }}" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%; max-width: 160px;"></label></sc-if>
+<label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">Headline</span><input value="{{ popHeadline }}" onInput="{{ setPopHeadline }}" maxlength="80" aria-describedby="cob-ph-n" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"><span id="cob-ph-n" style="font-size: 11.5px; color: #4A5168;">{{ popHeadCount }}</span></label>
+<label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">Body</span><textarea value="{{ popBody }}" onInput="{{ setPopBody }}" rows="3" maxlength="220" aria-describedby="cob-pb-n" style="border-radius: 9px; border: 1px solid #8A90A3; padding: 8px 10px; font: 500 13.5px 'Public Sans', sans-serif; color: #14182B; resize: vertical;"></textarea><span id="cob-pb-n" style="font-size: 11.5px; color: #4A5168;">{{ popBodyCount }}</span></label>
+<label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">Button</span><input value="{{ popButton }}" onInput="{{ setPopButton }}" maxlength="32" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"></label>
+<label style="display: flex; flex-direction: column; gap: 5px;"><span class="cob-lbl">Show again after (days)</span><input type="number" inputmode="numeric" value="{{ popFreq }}" onInput="{{ setPopFreq }}" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%; max-width: 160px;"></label>
+<sc-if value="{{ popHasClaims }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 12.5px; color: #7A271A; background: #FEF3F2; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">{{ popClaims }}</p></sc-if>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;"><button type="button" onClick="{{ popRemove }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; color: #B42318; border-color: rgba(180,35,24,0.35);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B42318" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>{{ popRemoveLabel }}</button><sc-if value="{{ popDirty }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ cancelPopup }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Cancel</button></sc-if><button data-cos-save="" type="button" onClick="{{ savePopup }}" disabled="{{ popClean }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 9px; border: none; background: linear-gradient(180deg,#FF7A45 0%,#E8460F 100%); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Save Popup</button></div>
+<label style="display: flex; flex-direction: column; gap: 5px; border-top: 1px solid #EEF0F4; padding-top: 10px;"><span class="cob-lbl">Note for the Writer (optional)</span><input value="{{ popNoteVal }}" onInput="{{ setPopNote }}" placeholder="Used the next time you click Let CatalystOS Create This" style="height: 38px; border-radius: 9px; border: 1px solid #8A90A3; padding: 0 10px; font: 600 13.5px 'Public Sans', sans-serif; color: #14182B; background: #FFFFFF; min-width: 0; box-sizing: border-box; width: 100%;"></label>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 6px;"><iframe title="{{ popPreviewTitle }}" srcdoc="{{ popPreview }}" style="width: 100%; height: 480px; border: 1px solid #E6E8EC; border-radius: 12px; background: #F6F7FA;"></iframe><span style="font-size: 12px; color: #4A5168; line-height: 1.45;">{{ popColors }}. Escape or the Close button closes it.</span></div>
+</div>
 </sc-if>
 </section>
 </sc-if>
@@ -235,6 +331,9 @@
 
 <sc-if value="{{ tabLaunch }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Launch" style="display: flex; flex-direction: column; gap: 14px; max-width: 1000px;">
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Launch checklist</h2><span role="status" style="font: 700 12.5px Manrope, sans-serif; color: #4A5168;">{{ checkSummary }}</span></div>
+<ul style="list-style: none; margin: 0; padding: 0;"><sc-for list="{{ checklist }}" as="ck" hint-placeholder-count="5"><li style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #EEF0F4;"><span aria-hidden="true" style="{{ ck.markStyle }}">{{ ck.mark }}</span><span style="display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 200px;"><strong style="font: 800 13.5px Manrope, sans-serif; color: #081A53;">{{ ck.label }}</strong><span style="font-size: 12.5px; color: #4A5168;">{{ ck.detail }}</span></span><span style="{{ ck.statusStyle }}">{{ ck.status }}</span><button type="button" onClick="{{ ck.go }}" aria-label="{{ ck.goLabel }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap; height: 32px;">Open</button></li></sc-for></ul></div>
+<sc-if value="{{ hasPops }}" hint-placeholder-val="{{ true }}"><div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">CTA popups for your own site</h2><p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">One snippet with everything inside (no other files to load). Paste it just before &lt;/body&gt; on any page; the popups link to the landing page and show at most once every few days per visitor. They are already in the downloaded landing page.</p><div style="display: flex; flex-wrap: wrap; gap: 8px;"><button type="button" onClick="{{ copySnippet }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid #C9CDD8; background: #FFFFFF; color: #081A53; font: 800 13px Manrope, sans-serif; cursor: pointer; text-decoration: none; white-space: nowrap;">Copy Snippet</button><button data-cos-download="" type="button" onClick="{{ downloadSnippet }}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 16px; border-radius: 9px; border: none; background: linear-gradient(180deg,#1B2C6B 0%,#081A53 100%); color: #FFFFFF; font: 800 13px Manrope, sans-serif; cursor: pointer;">Download Snippet</button></div><sc-if value="{{ snipNoteOn }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 12.5px; color: #4A5168;">{{ snipNote }}</p></sc-if></div></sc-if>
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px;">
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
 <h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Download and launch yourself</h2>
@@ -259,6 +358,11 @@
 <button type="button" onClick="{{ openGraphics }}" style="align-self: flex-start; height: 40px; padding: 0 18px; border-radius: 10px; border: none; background: linear-gradient(160deg,#FF8A4A,#FD5920); color: #FFFFFF; font: 800 14px Manrope, sans-serif; cursor: pointer;">Open in Event Graphics Builder</button>
 <sc-if value="{{ gfxNoteOn }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin: 0; font-size: 12.5px; color: #4A5168;">{{ gfxNote }}</p></sc-if>
 </div></sc-if>
+<div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Host the pages and start the sequence</h2>
+<p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">CatalystOS-hosted landing pages with the popups on, and the email sequence as a HubSpot workflow that sends on schedule.</p>
+<p style="margin: 0; font-size: 12.5px; color: #6B4E00; background: #FFF4CC; border-radius: 8px; padding: 8px 10px; line-height: 1.45;">Coming next: hosting and the HubSpot workflow are the next phase. Until then, download the files and upload them yourself.</p>
+</div>
 <div style="background: #FFFFFF; border: 1px solid #E6E8EC; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
 <h2 style="margin: 0; font: 800 17px Manrope, sans-serif; color: #081A53;">Build it in HubSpot</h2>
 <p style="margin: 0; font-size: 13px; color: #4A5168; line-height: 1.55;">We’ll create the landing pages, the sign-up form, every email and the workflow that sends them on schedule, directly in the client’s HubSpot account.</p>
@@ -324,16 +428,17 @@ const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 
 
 // How many parts of an offer (the document, each landing page, each email) are written at the same time.
 const BUILD_AT_ONCE = 3;
-const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
+const FORM0 = { offerType: null, answers: {}, kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
     form: { ...FORM0 },
-    camps: [], busy: false, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
+    camps: [], busy: false, pickQ: '', sfList: {}, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
     this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0);
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
+      if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
       if (d.cod === 'pages' && d.n) { if (this._docY != null) { try { e.source.scrollTo(0, this._docY); } catch (x) {} this._docY = null; } if (this.state.docPages !== d.n) this.setState({ docPages: d.n }); } };
     window.addEventListener('message', this._onMsg);
   }
@@ -345,9 +450,9 @@ class Component extends DCLogic {
     if (!this._lgP) { this._lgP = new Set(); const p0 = this.persist; this.persist = (o) => { const p = p0.call(this, o); this._lgP.add(p); const done = () => this._lgP.delete(p); p.then(done, done); return p; }; }
     const fieldEdited = () => { const f = this.state.field; return !!f && f.val !== f.orig; };
     window.CosLeaveGuard.register({ label: 'content offer',
-      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft,
+      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft || !!this.state.popDraft,
       save: async () => {
-        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail();
+        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail(); const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
         const f = this._lgFail; if (f) this.persist(this.state.offers.find((x) => x.id === f.id) || f);
         await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
       } });
@@ -364,7 +469,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CV = await this.D.loadConversion();
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CAT = await lib('./lib/offer-catalog.js'); this.PK = await lib('./lib/popup-kit.js'); this.CV = await this.D.loadConversion();
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -376,13 +481,45 @@ class Component extends DCLogic {
     const [offers, camps, curCamp] = await Promise.all([this.D.listOffers().catch(() => []), this.D.campaigns().catch(() => []), this.D.currentCampaign().catch(() => '')]);   // Current campaign (Erika, Oct 22)
     const want = new URLSearchParams(location.search).get('offer'), has = want && offers.find((o) => o.id === want);
     this.setState({ boot: 'ready', info, offers, camps, curCamp, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
+    this.shell(info);
   }
+  // The CatalystOS header from the shared kit (catalyst-shell.js): app bar with "Content Offer Builder:", the client
+  // dropdown and +, the You Run It switch; the purple bar with Saved Files left and the campaign right.
+  shell(info) {
+    const S = window.CatalystShell; if (!S || !this.D) return; info = info || this.state.info || {};
+    const o = { app: 'Content Offer Builder', mount: document.querySelector('[data-cos-shell-mount]') || null, saved: 'contentoffers', runMode: 'you',
+      clientId: info.clientId || '', clientName: this.D.clientName(), clients: info.clients || [], userEmail: (info.user && info.user.email) || '', onSignOut: () => this.D.signOut(),
+      onClientChange: (id) => this.pickClient(id), onSave: () => (window.CosLeaveGuard && window.CosLeaveGuard.isDirty() ? this.flushSave() : Promise.resolve()),
+      campaigns: this.state.camps.map((c) => ({ id: c.id, name: c.name })), campaignId: this.shellCampId() || '', onCampaignChange: (id) => this.pickCampaign(id) };
+    if (info.agency) o.agency = info.agency; const org = this.D.orgId(); if (org) o.orgId = org;
+    try { (this._shellOn ? S.update : S.init).call(S, o); this._shellOn = true; } catch (e) { console.warn('CatalystOS header', e); }
+  }
+  shellCampId() { const o = this.state.view === 'offer' ? this.offer() : null; return o ? o.campaignId || '' : this.formCampId() || ''; }
+  // The campaign picker in the purple bar: a new offer's campaign, or (with an offer open) the campaign this offer is for.
+  pickCampaign(id) {
+    if (!id) return; this.D.setCurrentCampaign(id);
+    const o = this.state.view === 'offer' ? this.offer() : null, c = this.campaign(id);
+    if (o) { if (o.campaignId !== id) this.update((x) => { x.campaignId = id; x.campaignName = c ? c.name : ''; return x; }); }
+    else this.setForm({ camp: id });
+  }
+  // Save now (task bar Save, the leave guard): any typed edit, then every save still under way.
+  async flushSave() {
+    const f = this.state.field; if (f && f.val !== f.orig) this.saveField(); if (this.state.emDraft) this.saveEmail();
+    const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
+    const o = this.offer(); if (o) await this.persist(o);
+    if (this._lgP) await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
+  }
+  // ---- the offer catalog (lib/offer-catalog.js) ----
+  entryOf(o) { return this.CAT.catalogOf(o); }
+  formEntry() { return this.state.form.offerType ? this.CAT.byId(this.state.form.offerType) : null; }
+  // Start an offer of this type: the details for it, its funnel and where the piece is made (no AI yet).
+  pickType(id) { const e = this.CAT.byId(id); if (!e) return; this.setState((st) => ({ form: { ...st.form, offerType: e.id, kind: e.engineKind, answers: {}, tpl: e.engineKind === 'webinar' ? (st.form.tpl || 'editorial') : st.form.tpl }, err: '' })); try { window.scrollTo({ top: 0 }); } catch (e2) {} }
   // Switching clients happens right here: the new client's offers, campaigns and brand load, and nothing of the old client stays on screen.
   pickClient = async (id) => {
     const st = this.state, prev = (st.info || {}).clientId;
     if (!id || id === prev) return;
     if (st.busy) return this.setState({ err: 'Please wait until CatalystOS finishes, then switch clients.' });
-    this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
+    this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], sfList: {}, offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
     let info = null; try { info = await this.D.switchClient(id); } catch (e) { console.error(e); }
     if (!info) { const back = prev ? await this.D.switchClient(prev).catch(() => null) : null; if (back) await this.useInfo({ ...st.info, ...back }); return this.setState({ boot: back ? 'ready' : 'error', err: 'That client could not be opened. Try again from the dashboard.', bootMsg: 'That client could not be opened. Try again from the dashboard.' }); }
     try { const u = new URL(location.href); u.searchParams.delete('offer'); u.searchParams.set('client', info.clientId || id); if (this.D.orgId()) u.searchParams.set('org', this.D.orgId()); history.replaceState(null, '', u.href); } catch (e) {}
@@ -503,7 +640,7 @@ class Component extends DCLogic {
     return {
       // The whole offer: the strategy and every landing page and email (each approval recorded in Brand Command, as the switches here do).
       async approve(ref, on, rec) { const o = await self.sfOffer(ref, rec); if (!o) return; const a = self.approval(!!on);
-        o.strategyApproved = a; if (o.doc) o.doc.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
+        o.strategyApproved = a; if (o.doc) o.doc.approved = a; if (o.piece) o.piece.approved = a; if (o.popups) o.popups.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
         await self.persist(o);
         if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); if (o.doc) self.D.recordApproval('doc', self.O.offerById(o.kind).label + ' · ' + (o.name || ''), o.doc); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
       // An offer is for one Brand Command campaign: the one newly picked (or none).
@@ -550,19 +687,90 @@ class Component extends DCLogic {
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
   async planNew(alive) {
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const e = this.formEntry(), base = { id: 'o' + Date.now(), v: 2, type: 'offer', ...(e ? { offerType: e.id, answers: { ...(f.answers || {}) } } : {}), kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     const strategy = await this.D.planOffer({ offer: base, campaign: camp });
     if (!alive()) throw this.stopped();
-    const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
-    this.setState({ offerId: o.id, view: 'offer', tab: 'strategy', note: '' });
+    const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || (e ? e.label : this.O.offerById(f.kind).label), strategy, strategyApproved: null });
+    this.setState({ offerId: o.id, view: 'offer', tab: this.funnelRightAway(o) ? 'strategy' : 'doc', note: '' });
     return o;
   }
+  // A new offer is planned and then built in one go when this app makes the piece itself (white paper, guide, case study,
+  // events) or in a hands-off run; otherwise the plan comes first and the piece is made in its own builder next (Part 1).
+  funnelRightAway(o) { const e = this.entryOf(o); return !!this._ccAuto || !o.offerType || this.isDocKind(o) || e.builder === 'webinar'; }
+  // I'll Make This Myself (no AI): the offer is saved with its type and details, and opens on its piece.
+  startManual = async () => {
+    const f = this.state.form, e = this.formEntry(); if (!e || this.state.busy) return;
+    const campId = this.formCampId(), camp = this.campaign(campId);
+    const o = await this.persist({ id: 'o' + Date.now(), v: 2, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() });
+    this.setState({ offerId: o.id, view: 'offer', tab: 'doc', note: '', form: { ...FORM0 } });
+  };
+
+  // ---- Part 1: the piece, made in its own builder ----
+  // Opens the builder (a new tab) with the offer's context. auto = hands-off: it makes the piece and reports back here.
+  async openBuilder(o, auto, w) {
+    const e = this.entryOf(o), job = auto ? 'cob-' + o.id + '-' + Date.now() : '';
+    w = w || window.open('', '_blank');
+    if (!w) { const m = 'Your browser blocked the new tab. Allow pop-ups for this site and try again.'; throw Object.assign(new Error(m), { userMessage: m }); }
+    try { w.document.title = 'Opening the ' + this.CAT.builderOf(e).label + '…'; } catch (x) {}
+    const url = await this.D.builderUrl(e, o, { auto, job });
+    if (!auto) w.opener = null;
+    w.location.href = url; return { job, w };
+  }
+  makeMyself = async () => { const o = this.offer(); if (!o) return; const w = window.open('', '_blank'); try { await this.openBuilder(o, false, w); this.setState({ pieceNote: 'The ' + this.CAT.builderOf(this.entryOf(o)).label + ' opened in a new tab. When it’s saved, link it below from Saved Files.' }); } catch (e) { if (w) w.close(); this.setState({ err: (e && (e.userMessage || e.message)) || 'Could not open the builder.' }); } };
+  // Let CatalystOS Create This on the piece: the builder makes it hands-off; its result (Saved Files) links back here.
+  async makePiece(alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const { job, w } = await this.openBuilder(o, true);
+    const result = await new Promise((resolve, reject) => {
+      const t0 = Date.now();
+      const tick = setInterval(() => {
+        if (!this._pieceWait || this._pieceWait.job !== job) return clearInterval(tick);
+        if (!alive()) { clearInterval(tick); this._pieceWait = null; try { w.close(); } catch (x) {} return reject(this.stopped()); }
+        let closed = false; try { closed = w.closed; } catch (x) {}
+        if (closed || Date.now() - t0 > 45 * 60000) { clearInterval(tick); this._pieceWait = null; const m = closed ? 'The builder tab was closed before it finished. Nothing was linked.' : 'The builder took too long. Check Saved Files and link the piece from there.'; reject(Object.assign(new Error(m), { userMessage: m })); }
+      }, 1000);
+      this._pieceWait = { job, offerId: o.id, resolve: (r) => { clearInterval(tick); resolve(r); }, reject: (e) => { clearInterval(tick); reject(e); } };
+    });
+    if (!alive()) throw this.stopped();
+    await this.linkPiece(o.id, { ...result, by: 'catalystos' });
+  }
+  pieceReport(d) {
+    const pw = this._pieceWait; if (!pw) return;
+    if (d.ok) { this._pieceWait = null; pw.resolve(d.result || {}); }
+    else if (d.ok === false) { this._pieceWait = null; const m = d.error ? 'The builder couldn’t finish: ' + d.error : 'The builder couldn’t finish.'; pw.reject(Object.assign(new Error(m), { userMessage: m })); }
+  }
+  // Link a finished piece (from a hands-off run or picked in Saved Files). The download link is kept unless one was set.
+  linkPiece(id, r) {
+    const e = this.entryOf(this.state.offers.find((x) => x.id === id) || {});
+    const piece = { app: r.app || this.CAT.builderOf(e).app, ref: r.ref != null ? String(r.ref) : '', title: r.title || '', openUrl: r.openUrl || '', thumb: r.thumb || '', pdfUrl: r.pdfUrl || '', by: r.by || 'person', at: Date.now(), approved: null };
+    return this.updateOf(id, (x) => { x.piece = piece; if (piece.pdfUrl && !x.fileUrl) x.fileUrl = piece.pdfUrl; return x; });
+  }
+  async loadSaved(app) { if (!app || (this.state.sfList[app] && !this.state.sfList[app].stale)) return; this.setState((st) => ({ sfList: { ...st.sfList, [app]: { loading: true, items: [] } } })); const items = await this.D.savedFrom(app); this.setState((st) => ({ sfList: { ...st.sfList, [app]: { items } } })); }
+
+  // ---- Part 2: CTA popups ----
+  popupsOf(o) { return o.popups && Array.isArray(o.popups.list) ? o.popups.list : this.D.suggestedPopups(o); }
+  async writePopups(alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const r = await this.D.writeOfferPopups({ offer: o, campaign: this.campaign(o.campaignId), note: (this.state.popNote || '').trim() });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.popups = { list: r.popups, by: r.by, at: r.at, approved: null }; return x; });
+    this.setState({ popNote: '', popIdx: 0 });
+  }
+  // Any edit saves the popups on the offer (first edit of the suggested ones saves them) and sends them back to review.
+  editPopup(i, patch) { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); if (!list[i]) return x; list[i] = this.PK.normalizePopup({ ...list[i], ...patch }, i); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); }
+  addPopup() { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); if (list.length >= this.PK.LIMITS.maxPopups) return x; const used = list.map((p) => p.trigger), t = ['exit', 'scroll', 'time'].find((k) => !used.includes(k)) || 'time', e = this.entryOf(x); list.push(this.PK.normalizePopup({ id: 'p' + Date.now().toString(36), trigger: t, headline: 'Get the ' + e.noun, body: e.oneLine, button: e.cta }, list.length)); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); this.setState((st) => ({ popIdx: Math.min(2, (st.popIdx || 0) + 1) })); }
+  removePopup(i) { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)).filter((_, j) => j !== i); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); this.setState({ popIdx: 0, popDel: null }); }
+  popupHref(o) { return o.pageUrl || '#'; }
+  snippetOf(o) { return this.PK.embedSnippet(this.popupsOf(o), { brand: this.D.siteBrand(), href: this.popupHref(o), offerId: o.id, title: (o.strategy || {}).title || o.name }); }
+  copySnippet = async () => { const o = this.offer(); if (!o) return; const t = this.snippetOf(o); let ok = false; try { await navigator.clipboard.writeText(t); ok = true; } catch (e) { try { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e2) {} } this.setState({ snipNote: ok ? 'Copied. Paste it just before </body> on your site.' : 'Couldn’t copy. Use Download Snippet instead.' }); };
+  downloadSnippet = () => { const o = this.offer(); if (!o) return; const blob = new Blob([this.PK.snippetFile(this.popupsOf(o), { brand: this.D.siteBrand(), href: this.popupHref(o), offerId: o.id, title: (o.strategy || {}).title || o.name })], { type: 'text/html' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (o.name || 'content-offer').replace(/[^\w-]+/g, '-').toLowerCase() + '-popups.html'; document.body.appendChild(a); a.click(); a.remove(); };
+
   // Revise the open offer's strategy with the changes the person wrote.
   async replanOffer(note, alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
-    const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note).join('\n') });
+    const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note || []).join('\n') });
     if (!alive()) throw this.stopped();
-    await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
+    await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note || []); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
     this.setState({ note: '' });
   }
   // Progress for hands-off runs: time-only words, never what is being made or how much of it (Erika, Oct 18).
@@ -608,7 +816,7 @@ class Component extends DCLogic {
   }
   // The conversion engine's pages for this offer (its document, strategy, speakers and the campaign).
   async makeConversion(o, camp) {
-    const st = o.strategy || {}, typeId = o.kind === 'replay' ? 'ondemand' : o.kind;
+    const st = o.strategy || {}, typeId = o.offerType ? this.entryOf(o).convType : o.kind === 'replay' ? 'ondemand' : o.kind;
     const input = { brand: this.D.conversionBrand(), campaign: camp ? { ...camp } : {}, design: { style: (o.design || {}).style },
       offer: { id: o.id, app: this.D.APP, openUrl: this.D.offerOpenUrl(o.id), kind: typeId, title: st.title || o.title || o.name, topic: o.topic, doc: o.doc, strategy: st, speakers: o.speakers, people: o.people, date: o.date, time: o.time, where: o.where, videoUrl: o.videoUrl, fileUrl: o.fileUrl, nextUrl: o.nextUrl, campaignId: o.campaignId, story: o.story, research: o.research },
       spec: o.spec || {}, settings: { formEndpoint: o.formUrl || '', fileUrl: o.fileUrl || '', ...((o.conversion || {}).settings || {}) }, mode: this._ccAuto ? 'autopilot' : 'collaborative' };
@@ -650,7 +858,8 @@ class Component extends DCLogic {
     if (failed) throw failed;
     if (!alive()) throw this.stopped();
   }
-  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide' || o.kind === 'casestudy'); }
+  // The white paper, guide or case study this app writes itself (writeOfferDoc). Catalog types made in another builder never are.
+  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide' || o.kind === 'casestudy') && (!o.offerType || this.CAT.writesInApp(this.entryOf(o))); }
   // The white paper or guide again (from its tab).
   async rewriteDoc(alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
@@ -682,8 +891,11 @@ class Component extends DCLogic {
   // (after revising the strategy if the person wrote changes).
   ccTarget() {
     const st = this.state, o = this.offer();
-    if (st.view !== 'offer' || !o) return { what: 'new' };
+    if (st.view !== 'offer' || !o) return this.formEntry() ? { what: 'new' } : { what: 'none' };
     if (st.tab === 'doc' && this.isDocKind(o)) return { what: 'doc' };
+    // The piece made in its own builder (hands-off); events are planned here; interactive tools aren't built yet.
+    if (st.tab === 'doc') { const e = this.entryOf(o); return this.CAT.handsOff(e) ? { what: 'piece' } : e.builder === 'webinar' ? { what: 'offer' } : { what: 'none' }; }
+    if (st.tab === 'popups') return { what: 'popups' };
     if (st.tab === 'pages' && o.pages.length) return { what: 'page', i: Math.min(st.pageIdx, o.pages.length - 1) };
     if (st.tab === 'emails' && o.emails.length) return { what: 'email', i: Math.min(st.emailIdx, o.emails.length - 1) };
     return { what: 'offer' };
@@ -697,17 +909,22 @@ class Component extends DCLogic {
     // In a hands-off run the document's PDF is linked when it is saved (ccAutoSave), so that blocker is reported there instead.
     if (o.conversion && this.CV) { const R = this.CV.scorecard(this.convSite(o), this.D.siteBrand()); (R.blockers || []).filter((b) => !(this._ccAuto && o.doc && /isn’t linked yet/.test(b))).forEach((b) => notes.push('Before publishing the landing page: ' + b)); (R.notes || []).forEach((b) => notes.push(b)); }
     if (this.O.offerById(o.kind).event) notes.push('Make the event graphics (Zoom slides, banners, posts) from the Launch tab: Open the Event Graphics Builder.');
+    const e = this.entryOf(o), B = this.CAT.builderOf(e);
+    if (o.offerType && !this.isDocKind(o) && !o.piece && e.builder !== 'webinar') notes.push(e.ready === false ? 'The ' + e.noun + ' itself is an interactive tool, coming in the next phase. The funnel around it can be planned now.' : 'Next: make the ' + e.noun + ' itself. On its tab, click Let CatalystOS Create This to make it in the ' + B.label + ', or I’ll Make This Myself.');
+    if (this.ccTarget().what === 'popups') notes.push('Check each popup’s wording and timing, then approve them. They never claim numbers the offer doesn’t support.');
     return notes;
   }
   cosCreateMount() {
     const go = () => {
       if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
       window.CatalystCreate.mount({ designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
-        enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit,
-        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
+        enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit && this.ccTarget().what !== 'none',
+        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'popups') return 'CTA popups'; if (t.what === 'piece') return this.entryOf(o).noun; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
         context: () => {
           const t = this.ccTarget(), o = this.offer(), O = this.O;
-          if (t.what === 'new') { const c = this.campaign(this.formCampId()); return { kind: O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
+          if (t.what === 'new') { const c = this.campaign(this.formCampId()), e = this.formEntry(); return { kind: e ? e.label : O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
+          if (t.what === 'piece') { const e = this.entryOf(o); return { kind: e.label + ' (in the ' + this.CAT.builderOf(e).label + ')', campaign: o.campaignName || '' }; }
+          if (t.what === 'popups') return { kind: 'CTA popups', campaign: o.campaignName || '' };
           const kind = t.what === 'doc' ? O.offerById(o.kind).label + ' (the document)' : t.what === 'page' ? 'Landing page: ' + o.pages[t.i].title : t.what === 'email' ? 'Email: ' + o.emails[t.i].name : O.offerById(o.kind).label;
           return { kind, campaign: o.campaignName || '' };
         },
@@ -725,11 +942,13 @@ class Component extends DCLogic {
           const gen = this._ccGen = (this._ccGen || 0) + 1, alive = () => gen === this._ccGen;
           const t = this.ccTarget(); this.setState({ busy: true, err: '', field: null, delAsk: false });
           try {
-            if (t.what === 'new') { await this.planNew(alive); await this.buildOffer(alive); }
+            if (t.what === 'new') { const o1 = await this.planNew(alive); if (this.funnelRightAway(o1)) await this.buildOffer(alive); }
+            else if (t.what === 'piece') await this.makePiece(alive);
+            else if (t.what === 'popups') await this.writePopups(alive);
             else if (t.what === 'doc') await this.rewriteDoc(alive);
             else if (t.what === 'page') await this.rewritePage(t.i, alive);
             else if (t.what === 'email') await this.rewriteEmailAt(t.i, alive);
-            else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note) await this.replanOffer(note, alive); await this.buildOffer(alive); }
+            else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note || !(this.offer() || {}).strategy) await this.replanOffer(note, alive); await this.buildOffer(alive); }
             if (!alive()) throw this.stopped();
             return { notes: this.ccNotes() };
           } finally { if (alive()) this.setState({ busy: false }); }
@@ -762,10 +981,12 @@ class Component extends DCLogic {
     const camp0 = this.campaign(p.campaign), ot = String(spec.offerType || '').toLowerCase();
     const specKind = { 'guide or checklist': 'guide', 'white paper or report': 'whitepaper', webinar: 'webinar', workshop: 'workshop', 'webinar replay': 'replay', 'case study': 'casestudy', ebook: 'guide', checklist: 'guide', 'research report': 'whitepaper', report: 'whitepaper', 'white paper': 'whitepaper', guide: 'guide' }[ot];
     const fromWords = (t) => (/replay|on[- ]demand|recording/.test(t) ? 'replay' : /webinar/.test(t) ? 'webinar' : /workshop|masterclass|bootcamp/.test(t) ? 'workshop' : /case stud|success stor/.test(t) ? 'casestudy' : /white ?paper|report|research/.test(t) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(t) ? 'guide' : '');
-    const kind = specKind || fromWords(String((camp0 && camp0.offer) || '').toLowerCase()) || fromWords(words) || 'whitepaper';
+    const ce = this.CAT.findType(spec.offerType || '') || null;
+    const kind = (ce && ce.engineKind) || specKind || fromWords(String((camp0 && camp0.offer) || '').toLowerCase()) || fromWords(words) || 'whitepaper';
+    const offerType = ce ? ce.id : (this.CAT.fromLegacy(kind) || {}).id || null;
     this._ccAuto = { title: String(p.title || '').trim() };
     await new Promise((r) => this.setState({ view: 'new', offerId: null, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', note: '', emDraft: null, emNote: '', delAsk: false, zoom: null, seqEdit: null,
-      form: { ...FORM0, kind, story: String(p.story || '').slice(0, 6000), research: String(p.research || '').slice(0, 8000), date: String(spec.eventDate || ''), time: [spec.eventTime, spec.eventTimezone].filter(Boolean).join(' '), speakers: /^(whitepaper|guide|casestudy)$/.test(kind) && 'voiceOf' in spec ? (String(spec.voiceOf || '').trim() ? [String(spec.voiceOf).trim()] : []) /* a written offer: its author is Run Campaign's "Written by" (none = the company voice), never the event speakers */ : Array.isArray(spec.speakers) ? spec.speakers.slice(0, 6) : [], title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
+      form: { ...FORM0, offerType, kind, story: String(p.story || '').slice(0, 6000), research: String(p.research || '').slice(0, 8000), date: String(spec.eventDate || ''), time: [spec.eventTime, spec.eventTimezone].filter(Boolean).join(' '), speakers: /^(whitepaper|guide|casestudy)$/.test(kind) && 'voiceOf' in spec ? (String(spec.voiceOf || '').trim() ? [String(spec.voiceOf).trim()] : []) /* a written offer: its author is Run Campaign's "Written by" (none = the company voice), never the event speakers */ : Array.isArray(spec.speakers) ? spec.speakers.slice(0, 6) : [], title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
   }
   // Save exactly as the app does (the offer, then its Saved Files entry with the campaign), waited for; first landing page as the thumbnail.
   async ccAutoSave(p) {
@@ -862,13 +1083,16 @@ class Component extends DCLogic {
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
     const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind });
-    o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
+    // The CTA popups go into the main landing page (never the thank-you page), and as a snippet for the client's own site.
+    const pops = this.PK.normalizeAll(this.popupsOf(o)), popOpts = { brand: this.D.siteBrand(), href: o.pageUrl || '#', offerId: o.id, title: (o.strategy || {}).title || o.name };
+    o.pages.forEach((p, i) => { const html = this.renderOfferPage(o, i, b); files['landing-pages/' + p.slug + '.html'] = i === 0 && pops.length ? this.PK.injectIntoPage(html, pops, popOpts) : html; });
+    if (pops.length) files['popups/embed-snippet.html'] = this.PK.snippetFile(pops, popOpts);
     if (o.conversion && this.CV) files['landing-pages/conversion-plan.md'] = this.CV.planMarkdown(this.convSite(o));
     o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText({ ...e.content, cta: this.ctaOf(o, e).text }, { brand: b, esp: o.esp, href: this.ctaOf(o, e).url }); });
     const st = o.strategy || {};
     files['send-schedule.csv'] = 'Order,Email,Subject,When,To,Goal\n' + o.emails.map((e, i) => [i + 1, e.name, (e.content || {}).subject || '', e.when, e.to, e.goal].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
     files['strategy.md'] = '# ' + (st.title || o.name) + '\n\n' + O.label + (o.campaignName ? ' · Campaign: ' + o.campaignName : '') + '\n\n' + (st.summary || '') + '\n\n## Objective\n' + ((st.objective || {}).text || '') + '\n\nWhy: ' + ((st.objective || {}).why || '') + '\n\n## Audience\n' + ((st.audience || {}).text || '') + '\n\nPain: ' + ((st.audience || {}).pain || '') + '\n\nWhy: ' + ((st.audience || {}).why || '') + '\n\n## Angle\n' + ((st.angle || {}).text || '') + '\n\nWhy: ' + ((st.angle || {}).why || '') + '\n\n## Why this offer fits\n' + (st.fit || '') + '\n\n## Landing pages\n' + (st.pages || []).map((p) => '- ' + p.key + ': ' + p.job + ' (why: ' + p.why + ')').join('\n') + '\n\n## Emails\n' + (st.emails || []).map((e, i) => (i + 1) + '. ' + e.name + ' — ' + e.when + ', to ' + e.to + ': ' + e.goal + ' (why: ' + e.why + ')').join('\n') + '\n\n## Metrics\n' + (st.metrics || []).map((m) => '- ' + m.name + ': ' + m.target + ' — ' + m.why).join('\n') + '\n\n## Assumptions to confirm\n' + (st.assumptions || []).map((x) => '- ' + x).join('\n') + '\n\n## Risks\n' + (st.risks || []).map((x) => '- ' + x).join('\n') + '\n';
-    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\n' + (o.doc ? 'document/: the ' + O.noun + ' itself (open it in a browser; for the PDF use Download PDF on its tab).\n' : '') + 'landing-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
+    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\n' + (o.doc ? 'document/: the ' + O.noun + ' itself (open it in a browser; for the PDF use Download PDF on its tab).\n' : '') + 'landing-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.' + (pops.length ? '\npopups/embed-snippet.html: the CTA popups (already on index.html) to paste on your own site, just before </body>.' : '') + '\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
     try { const blob = await this.D.zipOffer(o, files); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (o.name || 'content-offer').replace(/[^\w-]+/g, '-').toLowerCase() + '.zip'; document.body.appendChild(a); a.click(); a.remove(); }
     catch (e) { this.setState({ err: 'Could not make the download: ' + (e && e.message || e) }); }
   };
@@ -877,17 +1101,116 @@ class Component extends DCLogic {
     const o = this.offer(); if (!o) return; await this.deleteOfferNow(o.id);
   };
 
+  // ---------- view values: the new-offer picker and details ----------
+  newVals(st, f) {
+    const CAT = this.CAT, e = this.formEntry(), q = st.pickQ || '', G = CAT.groups(q), B = (x) => CAT.builderOf(x);
+    const badge = (x) => 'align-self:flex-start;font:800 10.5px Manrope,sans-serif;letter-spacing:.02em;border-radius:999px;padding:3px 9px;' + (x.ready === false ? 'background:#FFF4CC;color:#6B4E00;' : 'background:#F1EBFF;color:#3B1A8F;');
+    return { isPicker: st.view === 'new' && !e, isNewForm: st.view === 'new' && !!e,
+      pickQ: q, setPickQ: (ev) => this.setState({ pickQ: ev.target.value }), pickCount: CAT.CATALOG.length + ' offer types', pickNone: !G.length,
+      pickResult: q.trim() ? G.reduce((n, g) => n + g.items.length, 0) + ' of ' + CAT.CATALOG.length + ' offer types match' : '',
+      pickGroups: G.map((g) => ({ headId: 'cob-cat-' + g.id, title: (g.extra ? 'More: ' : g.id + '. ') + g.label, items: g.items.map((x) => ({ label: x.label, oneLine: x.oneLine, builder: x.ready === false ? 'Interactive · coming next phase' : 'Made in the ' + B(x).label, badgeStyle: badge(x), aria: x.label + '. ' + x.oneLine + ' ' + (x.ready === false ? 'Interactive tool, coming in the next phase.' : 'Made in the ' + B(x).label + '.'), pick: () => this.pickType(x.id) })) })),
+      newTypeLabel: e ? e.label : '', newTypeLine: e ? e.oneLine : '', newTypeBuilder: e ? (e.ready === false ? 'Interactive tool · the builder is coming in the next phase' : e.inApp ? 'Written here, or in the ' + B(e).label : e.builder === 'webinar' ? 'Planned here · made in the Webinar Creator and Event Graphics' : 'Made in the ' + B(e).label) : '',
+      changeType: () => this.setState((s2) => ({ form: { ...s2.form, offerType: null } })), startManual: this.startManual,
+      typeQs: e ? e.questions.map((qq) => ({ label: qq.label, placeholder: qq.placeholder || '', value: (f.answers || {})[qq.key] || '', long: !!qq.long, short: !qq.long, set: (ev) => { const v = ev.target.value; this.setState((s2) => ({ form: { ...s2.form, answers: { ...(s2.form.answers || {}), [qq.key]: v } } })); } })) : [],
+      hasTypeQs: !!(e && e.questions.length),
+      partSteps: e ? [['1', 'Make the offer', e.ready === false ? 'The ' + e.noun + ' is an interactive tool. Its builder comes in the next phase.' : e.inApp ? 'CatalystOS writes the ' + e.noun + ' here, or you make it in the ' + B(e).label + '.' : e.builder === 'webinar' ? 'The event is planned here; the Webinar Creator and Event Graphics make the session’s video and graphics.' : 'Made in the ' + B(e).label + ', by CatalystOS or by you.'], ['2', 'Build the funnel', 'Landing and thank-you pages, a timed email sequence and CTA popups around the ' + e.noun + '.'], ['3', 'Launch', 'A checklist: pages, sequence, popups and approvals. Download everything, or paste the popups on your own site.']].map(([n, t, d]) => ({ n, t, d })) : [] };
+  }
+  // ---------- Part 1: the piece ----------
+  pieceVals(o, st, e, isDoc) {
+    const B = this.CAT.builderOf(e), pc = o.piece, sf = st.sfList[B.app] || null, hand = this.CAT.handsOff(e);
+    if (st.tab === 'doc' && !isDoc && e.builder !== 'webinar' && e.ready !== false && !sf) setTimeout(() => this.loadSaved(B.app), 0);
+    const items = (sf && sf.items) || [];
+    return { pieceBuilder: B.label, pieceWhat: e.oneLine, pieceLabel: e.label, pieceNoun: e.noun,
+      pieceExternal: !isDoc && e.builder !== 'webinar' && e.ready !== false, pieceWebinar: e.builder === 'webinar', pieceComing: e.ready === false, pieceInApp: isDoc,
+      pieceHow: isDoc ? 'CatalystOS writes the ' + e.noun + ' right here: click Let CatalystOS Create This. You can also make it yourself in the ' + B.label + '.'
+        : hand ? 'Click Let CatalystOS Create This and the ' + B.label + ' makes the ' + e.noun + ' by itself in a new tab (keep this tab open). It comes back here when it’s saved. Or make it yourself.' : 'Make it yourself in the ' + B.label + ', then link it here from Saved Files.',
+      hasPiece: !isDoc && !!pc, noPiece: !isDoc && !pc, pieceTitle: pc ? pc.title || e.label : '', pieceThumb: pc && pc.thumb ? pc.thumb : '', hasPieceThumb: !!(pc && pc.thumb), noPieceThumb: !(pc && pc.thumb),
+      pieceOpen: pc ? pc.openUrl || '#' : '#', hasPieceOpen: !!(pc && pc.openUrl), pieceMeta: pc ? (pc.by === 'catalystos' ? 'Made by CatalystOS' : 'Linked from Saved Files') + ' in the ' + B.label + ' · ' + new Date(pc.at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (pc.approved ? ' · Approved by ' + (pc.approved.by || 'you') : '') : '',
+      pieceApprovedAria: pc && pc.approved ? 'true' : 'false', pieceTrack: track(!!(pc && pc.approved)), pieceKnob: knob(!!(pc && pc.approved)),
+      togglePiece: () => this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }),
+      unlinkPiece: () => { if (st.pieceDel !== o.id) return this.setState({ pieceDel: o.id }); this.setState({ pieceDel: null }); this.update((x) => { delete x.piece; return x; }); },
+      unlinkLabel: st.pieceDel === o.id ? 'Click again to unlink' : 'Unlink',
+      makeMyself: this.makeMyself, pieceNote: st.pieceNote || '', pieceNoteOn: !!st.pieceNote,
+      sfLoading: !!(sf && sf.loading), sfHasItems: items.length > 0, sfEmpty: !!sf && !sf.loading && !items.length,
+      sfOptions: items.map((x, i) => ({ id: String(i), label: x.title + (x.at ? ' · ' + new Date(x.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') })),
+      pickSaved: (ev) => { const x = items[+ev.target.value]; if (x) this.linkPiece(o.id, { ...x, by: 'person' }); },
+      refreshSaved: () => { this.setState((s2) => ({ sfList: { ...s2.sfList, [B.app]: null } })); },
+      webinarCreatorUrl: B.url + '?client=' + encodeURIComponent(this.D.clientId()) + (this.D.orgId() ? '&org=' + encodeURIComponent(this.D.orgId()) : ''), openGraphics2: this.openGraphics };
+  }
+  // ---------- Part 2: the funnel ----------
+  funnelVals(o, st, e, isDoc) {
+    const B = this.CAT.builderOf(e), dk = o.doc, pc = o.piece, b = this.D.siteBrand();
+    let docMini = '';
+    if (st.tab === 'funnel' && isDoc && dk) { const ck = JSON.stringify([dk, o.kind, b.primary, b.logo]); if (!this._miniDoc || this._miniDoc.k !== ck) this._miniDoc = { k: ck, html: this.Dk.renderDoc(dk, b, { kind: o.kind }) }; docMini = this._miniDoc.html; }
+    const have = isDoc ? dk : pc, isEv = !!this.O.offerById(o.kind).event;
+    const planned = !o.emails.length, seq = planned ? this.D.seqFor(o) : o.emails;
+    const pops = this.PK.normalizeAll(this.popupsOf(o));
+    const go = (t) => () => this.setState({ tab: t, field: null });
+    return { funHasOffer: !!have, funNoOffer: !have, funDocMini: docMini, funHasMini: !!docMini, funHasCard: !docMini && !!have,
+      funOfferTitle: isDoc ? (dk && dk.title) || o.name : pc ? pc.title || e.label : '', funOfferMeta: isDoc ? 'Written here · ' + ((dk && dk.sections) || []).length + ' sections' : pc ? 'In Saved Files · ' + B.label : '',
+      funThumb: pc && pc.thumb ? pc.thumb : '', funHasThumb: !!(pc && pc.thumb && !isDoc), funOpen: pc && pc.openUrl ? pc.openUrl : '', funHasOpen: !!(pc && pc.openUrl && !isDoc),
+      funApprovedAria: have && have.approved ? 'true' : 'false', funTrack: track(!!(have && have.approved)), funKnob: knob(!!(have && have.approved)),
+      funToggle: () => { if (isDoc) { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.D.recordApproval('doc', e.label + ' · ' + (x.name || ''), x.doc); return x; }); } else this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }); },
+      funGoPiece: go('doc'), funGoPages: go('pages'), funGoEmails: go('emails'), funGoPopups: go('popups'), funGoLaunch: go('launch'), funPieceLabel: e.label,
+      funNoOfferText: e.ready === false ? 'The ' + e.noun + ' is an interactive tool, coming in the next phase. You can still build its funnel.' : 'The ' + e.noun + ' isn’t made yet. Make it on its tab first; the landing page is written from it.',
+      funPages: o.pages.map((p) => ({ title: p.title, status: p.approved ? '✓ Approved' : p.sections.length ? 'Needs review' : 'Not written yet', style: p.approved ? 'color:#14663A;' : 'color:#4A5168;' })), funNoPages: !o.pages.length,
+      funSeqNote: planned ? 'The planned sequence for a ' + e.noun + '. Click Let CatalystOS Create This on this tab to write the pages and emails.' : isEv ? 'Timed to the event: before and after it.' : 'Day 0 is launch day for the invitations, and the day someone signs up for everything after.',
+      funSeq: seq.map((x, i) => ({ n: i + 1, day: this.CAT.dayLabel(x, isEv), name: x.name, to: x.to, status: planned ? 'Planned' : x.approved ? '✓ Approved' : x.content ? 'Needs review' : 'Not written yet' })),
+      funPops: pops.map((p) => ({ trig: this.PK.triggerText(p), headline: p.headline })), funPopsNote: o.popups ? (o.popups.approved ? 'Approved.' : 'Needs review.') : 'Suggested from the offer; not saved yet.' };
+  }
+  // ---------- Part 2: CTA popups ----------
+  popupVals(o, st, e, pops) {
+    const n = pops.length, i = Math.min(st.popIdx || 0, Math.max(0, n - 1)), p0 = pops[i], dr = st.popDraft && st.popDraft.id === o.id && st.popDraft.i === i ? st.popDraft : null;
+    const p = p0 ? { ...p0, ...(dr ? dr.v : {}) } : null, b = this.D.siteBrand();
+    const setD = (k) => (ev) => { const v = ev.target.value; this.setState((s2) => { const d0 = s2.popDraft && s2.popDraft.id === o.id && s2.popDraft.i === i ? s2.popDraft.v : {}; return { popDraft: { id: o.id, i, v: { ...d0, [k]: v } } }; }); };
+    const src = [JSON.stringify(o.strategy || {}), this.D.wordsOf(o.doc || {}), o.topic || ''].join('\n');
+    const bad = p ? this.PK.unsupportedClaims([p.headline, p.body, p.button].join(' '), src) : [];
+    const T = p ? this.PK.TRIGGERS.find((t) => t.id === p.trigger) || this.PK.TRIGGERS[2] : null, C = this.PK.colorsFor(b);
+    const prevKey = p ? JSON.stringify([p, C]) : ''; if (p && (!this._popPrev || this._popPrev.k !== prevKey)) this._popPrev = { k: prevKey, html: this.PK.previewDoc(p, { brand: b }) };
+    const chip = (on) => 'display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+    return { popSaved: !!o.popups, popSuggested: !o.popups && n > 0, popNone: !n, popHas: !!p,
+      popTabs: pops.map((x, j) => ({ label: 'Popup ' + (j + 1) + ' · ' + this.PK.triggerText(x), current: j === i ? 'true' : 'false', style: chip(j === i), pick: () => this.setState({ popIdx: j, popDraft: null, popDel: null }) })),
+      popCanAdd: n < this.PK.LIMITS.maxPopups, addPopup: () => this.addPopup(),
+      popTrigger: p ? p.trigger : 'exit', popTriggerOptions: this.PK.TRIGGERS.map((t) => ({ id: t.id, label: t.label })), setPopTrigger: setD('trigger'),
+      popHasValue: !!(T && T.id !== 'exit'), popValueLabel: T ? (T.id === 'time' ? 'Seconds on the page (' + T.min + ' to ' + T.max + ')' : 'Percent of the page scrolled (' + T.min + ' to ' + T.max + ')') : '', popValue: p ? String(p.value || (T ? T.def : '')) : '', setPopValue: setD('value'),
+      popHeadline: p ? p.headline : '', setPopHeadline: setD('headline'), popHeadCount: p ? String(p.headline).length + ' / ' + this.PK.LIMITS.headline : '',
+      popBody: p ? p.body : '', setPopBody: setD('body'), popBodyCount: p ? String(p.body).length + ' / ' + this.PK.LIMITS.body : '',
+      popButton: p ? p.button : '', setPopButton: setD('button'), popFreq: p ? String(p.frequencyDays) : '7', setPopFreq: setD('frequencyDays'),
+      popDirty: !!dr, popClean: !dr, savePopup: () => { if (!dr) return; this.editPopup(i, dr.v); this.setState({ popDraft: null }); }, cancelPopup: () => this.setState({ popDraft: null }),
+      popClaims: bad.length ? 'Check before saving: “' + bad.join('”, “') + '” isn’t in the offer’s own material. Popups never claim numbers the offer doesn’t support.' : '', popHasClaims: !!bad.length,
+      popRemove: () => { if (st.popDel !== i) return this.setState({ popDel: i }); this.removePopup(i); }, popRemoveLabel: st.popDel === i ? 'Click Again to Delete' : 'Delete Popup',
+      popApprovedAria: o.popups && o.popups.approved ? 'true' : 'false', popTrack: track(!!(o.popups && o.popups.approved)), popKnob: knob(!!(o.popups && o.popups.approved)),
+      togglePopups: () => this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); x.popups = { ...(x.popups || { by: 'suggested', at: Date.now() }), list, approved: this.approval(!(x.popups && x.popups.approved)) }; return x; }),
+      popPreview: p ? this._popPrev.html : '', popPreviewTitle: 'Live preview of popup ' + (i + 1) + ' on a sample page',
+      popColors: 'Panel ' + C.bg + ' with ' + (C.ink === '#FFFFFF' ? 'white' : 'dark') + ' text · button ' + C.btn + ' with ' + (C.btnInk === '#FFFFFF' ? 'white' : 'dark') + ' text (switches automatically for contrast)',
+      popNoteVal: st.popNote || '', setPopNote: (ev) => this.setState({ popNote: ev.target.value }),
+      popWhere: 'They link to ' + (o.pageUrl ? o.pageUrl : 'the landing page (set its address on the Launch tab)') + '. On the landing page itself, the button takes people to the form.' };
+  }
+  // ---------- Part 3: the launch checklist ----------
+  launchVals(o, st, e, isDoc, pops) {
+    const nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((x) => x.approved).length, have = isDoc ? o.doc : o.piece;
+    const row = (label, ok, detail, tab) => ({ label, detail, mark: ok ? '✓' : '○', status: ok ? 'Ready' : 'Not yet', markStyle: 'flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 13px Manrope,sans-serif;' + (ok ? 'background:#E8F6EE;color:#14663A;border:1px solid #14663A;' : 'background:#FFFFFF;color:#4A5168;border:1px solid #9AA1B5;'), statusStyle: 'font:800 12px Manrope,sans-serif;' + (ok ? 'color:#14663A;' : 'color:#6B4E00;'), go: () => this.setState({ tab, field: null }), goLabel: 'Open ' + label });
+    const checklist = [
+      row('The ' + e.noun, !!(have && have.approved), have ? (have.approved ? 'Approved' : 'Made; needs approval') : e.ready === false ? 'Interactive tool: coming in the next phase' : 'Not made yet', 'doc'),
+      row('Landing and thank-you pages', nP > 0 && apP === nP, nP ? apP + ' of ' + nP + ' approved' : 'Not written yet', 'pages'),
+      row('Email sequence', nE > 0 && apE === nE, nE ? apE + ' of ' + nE + ' approved' : 'Not written yet', 'emails'),
+      row('CTA popups', !!(o.popups && o.popups.approved && pops.length), pops.length ? pops.length + (pops.length === 1 ? ' popup' : ' popups') + (o.popups && o.popups.approved ? ', approved' : o.popups ? ', needs approval' : ', suggested (not saved)') : 'None', 'popups'),
+      row('Strategy', !!o.strategyApproved, o.strategy ? (o.strategyApproved ? 'Approved' : 'Needs approval') : 'Not planned yet', 'strategy'),
+    ];
+    const ready = checklist.filter((c) => c.mark === '✓').length;
+    return { checklist, checkSummary: ready + ' of ' + checklist.length + ' ready', hasPops: pops.length > 0, copySnippet: this.copySnippet, downloadSnippet: this.downloadSnippet, snipNote: st.snipNote || '', snipNoteOn: !!st.snipNote };
+  }
   renderVals() {
     const st = this.state, ready = st.boot === 'ready', info = st.info || {};
-    const base = { showShell: true, agency: info.agency || '', clientName: this.D ? this.D.clientName() : '', clientId: info.clientId || '', email: (info.user && info.user.email) || '', backHref: this.D ? this.D.dashboardUrl() : '#', clients: info.clients || [], pickClient: this.pickClient, signOut: () => this.D && this.D.signOut(),
+    const base = { showShell: !window.CatalystShell, agency: info.agency || '', clientName: this.D ? this.D.clientName() : '', clientId: info.clientId || '', email: (info.user && info.user.email) || '', backHref: this.D ? this.D.dashboardUrl() : '#', clients: info.clients || [], pickClient: this.pickClient, signOut: () => this.D && this.D.signOut(),
       notReady: !ready, isLoading: st.boot === 'loading', bootTitle: st.boot === 'loading' ? 'Loading' : st.boot === 'error' ? 'Something went wrong' : 'Content Offer Builder', bootMsg: st.bootMsg, hasErr: !!st.err, err: st.err, busy: st.busy };
     if (!ready || !this.O) return { ...base, ready: false };
     const O = this.O, f = st.form, K = O.offerById(f.kind), o = this.offer(), isOffer = st.view === 'offer' && !!o;
     const campId = this.formCampId();
     const offerRows = st.offers.map((x) => { const on = x.id === st.offerId && isOffer; const nApp = (x.pages || []).filter((p) => p.approved).length + (x.emails || []).filter((e) => e.approved).length, nAll = (x.pages || []).length + (x.emails || []).length;
-      return { name: x.name || 'Content offer', meta: O.offerById(x.kind).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, delAsk: false, err: '' }),
+      return { name: x.name || 'Content offer', meta: this.entryOf(x).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, popDraft: null, popIdx: 0, delAsk: false, err: '', pieceNote: '', snipNote: '' }),
         style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
-    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, newOffer: () => this.setState({ view: 'new', offerId: null, err: '', delAsk: false }),
+    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, ...this.newVals(st, f), newOffer: () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } })),
       campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
       kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
@@ -903,9 +1226,9 @@ class Component extends DCLogic {
         style: 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px 10px;border-radius:12px;cursor:pointer;text-align:left;' + ((f.tpl || 'editorial') === t.id ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FAFAFC;border:1px solid #E6E8EC;') })) : [],
       peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
-      funnelTitle: 'How a ' + K.noun + ' offer comes together',
+      funnelTitle: this.formEntry() ? 'How the ' + this.formEntry().label + ' offer comes together' : 'How a ' + K.noun + ' offer comes together',
       funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: K.replay ? ({ offer: 'Sign-up page: the replay video with an arrow to play it, what they’ll learn, the speakers, the form.', video: 'The replay itself: the video, its chapters and the next step.' }[k] || '') : { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
-      funnelEmails: this.D.seqFor({ kind: f.kind, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
+      funnelEmails: this.D.seqFor({ kind: f.kind, offerType: f.offerType, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
         open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
     if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
       Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk, st.zoom.tpl),
@@ -925,10 +1248,15 @@ class Component extends DCLogic {
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;
-    const isDoc = this.isDocKind(o), tab = st.tab === 'doc' && !isDoc ? 'strategy' : st.tab, tabDef = [['strategy', 'Strategy', o.strategyApproved ? '✓' : 'Review']].concat(isDoc ? [['doc', O.offerById(o.kind).label, o.doc ? (o.doc.approved ? '✓' : 'Review') : '']] : [], [['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['launch', 'Launch', '']]);
-    Object.assign(vals, { offerName: o.name || 'Content offer', offerMeta: O.offerById(o.kind).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
+    const isDoc = this.isDocKind(o), ent = this.entryOf(o), tab = st.tab, pieceDone = isDoc ? o.doc : o.piece, pops = this.PK.normalizeAll(this.popupsOf(o));
+    // Part 1 (the offer itself) · Part 2 (the funnel: pages, sequence, popups) · Part 3 (launch).
+    const tabDef = [['strategy', 'Strategy', o.strategy ? (o.strategyApproved ? '✓' : 'Review') : ''], ['doc', ent.label, pieceDone ? (pieceDone.approved ? '✓' : 'Review') : ''], ['funnel', 'Funnel', ''], ['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['popups', 'CTA popups', o.popups ? (o.popups.approved ? '✓' : 'Review') : pops.length ? 'Suggested' : ''], ['launch', 'Launch', '']];
+    Object.assign(vals, { saveNow: async () => { try { this.setState({ err: '' }); await this.flushSave(); } catch (e) { this.setState({ err: 'Could not save: ' + (e && e.message || e) }); } }, saveDisabled: !!st.busy,
+      offerName: o.name || 'Content offer', offerMeta: this.entryOf(o).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
       tabs: tabDef.map(([id, label, badge]) => ({ label, selected: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id, field: null }), style: btnTab(tab === id), badge, badgeStyle: badge ? 'margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:2px 8px;' + (tab === id ? 'background:#FFFFFF;color:#081A53;' : 'background:#F1EBFF;color:#3B1A8F;') : 'display:none;' })),
-      tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch' });
+      tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch', tabFunnel: tab === 'funnel', tabPopups: tab === 'popups',
+      hasStrategy: !!o.strategy, noStrategy: !o.strategy });
+    Object.assign(vals, this.pieceVals(o, st, ent, isDoc), this.funnelVals(o, st, ent, isDoc), this.popupVals(o, st, ent, pops));
 
     // Strategy
     const D = (label, x, extra) => ({ label, text: (x && x.text) || '—', extra: extra || '', why: (x && x.why) || '—', source: (x && x.source) || '' });
@@ -947,7 +1275,7 @@ class Component extends DCLogic {
     const dk = o.doc, dNoun = O.offerById(o.kind).noun, dBrand = this.D.siteBrand();
     if (tab === 'doc') { const ck = JSON.stringify([dk, o.kind, dBrand.primary, dBrand.secondary, dBrand.accent, dBrand.logo, dBrand.logoWhite, dBrand.head, dBrand.body, (dBrand.images || [])[0]]);
       if (!this._docCache || this._docCache.k !== ck) this._docCache = { k: ck, html: dk ? this.Dk.renderDoc(dk, dBrand, { kind: o.kind, editable: true }) : '' }; }
-    Object.assign(vals, { docNoun: dNoun, docLabel: O.offerById(o.kind).label, hasDoc: !!dk, noDoc: !dk, docWriting: !dk && st.busy, docIdle: !dk && !st.busy,
+    Object.assign(vals, { docNoun: dNoun, docLabel: ent.label, isDocPiece: isDoc, hasDoc: isDoc && !!dk, noDoc: !dk, docWriting: isDoc && !dk && st.busy, docIdle: isDoc && !dk && !st.busy,
       docSrc: tab === 'doc' && dk ? this._docCache.html : '', docFrameTitle: 'The ' + dNoun + ', page by page (click any text to edit it)',
       docInfo: dk ? (st.docPages ? st.docPages + ' pages · ' : '') + (dk.sections || []).length + ' sections' + (dk.approved ? ' · Approved by ' + (dk.approved.by || 'you') : dk.by === 'person' ? ' · Edited by you' : ' · Written by CatalystOS') : '',
       docApprovedAria: dk && dk.approved ? 'true' : 'false', docTrack: track(!!(dk && dk.approved)), docKnob: knob(!!(dk && dk.approved)),
@@ -990,7 +1318,7 @@ class Component extends DCLogic {
 
     Object.assign(vals, this.colorVals(o, st, pi, pg, ei));
     // Launch
-    const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0);
+    const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0) + (o.piece && !o.piece.approved ? 1 : 0);
     Object.assign(vals, { isEventOffer: !!O.offerById(o.kind).event, openGraphics: this.openGraphics, gfxNote: st.gfxNote || '', gfxNoteOn: !!st.gfxNote, gfxNoun: O.offerById(o.kind).noun,
       gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
@@ -1002,6 +1330,7 @@ class Component extends DCLogic {
           convNeedsReview: !!(o.conversion.review && (R.blockers || []).some((b) => /reviewer|review by/i.test(b))) || !!set.complianceApproved, convReviewed: set.complianceApproved ? 'true' : 'false', convReviewedText: set.complianceApproved ? 'Yes' : 'Not yet',
           toggleConvReviewed: () => this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), complianceApproved: !(x.conversion.settings || {}).complianceApproved } }; return x; }),
           convTitle: (R.blockers || []).length ? 'Landing page review ' + R.score + '/100 · before publishing:' : 'Landing page review ' + R.score + '/100 · nothing is blocking publication.', convBlockers: (R.blockers || []).map((t) => ({ t })), convBg: (R.blockers || []).length ? '#FEF3F2' : '#E8F5EC', convFg: (R.blockers || []).length ? '#7A271A' : '#14532D' }; })(),
+      ...this.launchVals(o, st, ent, isDoc, pops),
       notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS Create This.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;

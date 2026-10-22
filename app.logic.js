@@ -26,16 +26,17 @@ const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 
 
 // How many parts of an offer (the document, each landing page, each email) are written at the same time.
 const BUILD_AT_ONCE = 3;
-const FORM0 = { kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
+const FORM0 = { offerType: null, answers: {}, kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
     form: { ...FORM0 },
-    camps: [], busy: false, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
+    camps: [], busy: false, pickQ: '', sfList: {}, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
     this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0);
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
+      if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
       if (d.cod === 'pages' && d.n) { if (this._docY != null) { try { e.source.scrollTo(0, this._docY); } catch (x) {} this._docY = null; } if (this.state.docPages !== d.n) this.setState({ docPages: d.n }); } };
     window.addEventListener('message', this._onMsg);
   }
@@ -47,9 +48,9 @@ class Component extends DCLogic {
     if (!this._lgP) { this._lgP = new Set(); const p0 = this.persist; this.persist = (o) => { const p = p0.call(this, o); this._lgP.add(p); const done = () => this._lgP.delete(p); p.then(done, done); return p; }; }
     const fieldEdited = () => { const f = this.state.field; return !!f && f.val !== f.orig; };
     window.CosLeaveGuard.register({ label: 'content offer',
-      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft,
+      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft || !!this.state.popDraft,
       save: async () => {
-        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail();
+        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail(); const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
         const f = this._lgFail; if (f) this.persist(this.state.offers.find((x) => x.id === f.id) || f);
         await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
       } });
@@ -66,7 +67,7 @@ class Component extends DCLogic {
 
   async start() {
     try {
-      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CV = await this.D.loadConversion();
+      this.D = await lib('./lib/data.js'); this.K = await lib('./lib/site-kit.js'); this.P = await lib('./lib/panels.js'); try { await this.P.CC_READY; } catch (e) {} this.O = await lib('./lib/offer-kit.js'); this.W = await lib('./lib/webinar-tpl.js'); this.E = await lib('./lib/email-kit.js'); this.Dk = await lib('./lib/doc-kit.js'); this.CAT = await lib('./lib/offer-catalog.js'); this.PK = await lib('./lib/popup-kit.js'); this.CV = await this.D.loadConversion();
       if (this.D.setThumbMaker) this.D.setThumbMaker((o) => this.shotOffer(o));
       const info = await this.D.init();
       if (info.mode === 'signed-out') return this.setState({ boot: 'signed-out', bootMsg: 'Open the Content Offer Builder from your CatalystOS dashboard to sign in.' });
@@ -78,13 +79,45 @@ class Component extends DCLogic {
     const [offers, camps, curCamp] = await Promise.all([this.D.listOffers().catch(() => []), this.D.campaigns().catch(() => []), this.D.currentCampaign().catch(() => '')]);   // Current campaign (Erika, Oct 22)
     const want = new URLSearchParams(location.search).get('offer'), has = want && offers.find((o) => o.id === want);
     this.setState({ boot: 'ready', info, offers, camps, curCamp, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
+    this.shell(info);
   }
+  // The CatalystOS header from the shared kit (catalyst-shell.js): app bar with "Content Offer Builder:", the client
+  // dropdown and +, the You Run It switch; the purple bar with Saved Files left and the campaign right.
+  shell(info) {
+    const S = window.CatalystShell; if (!S || !this.D) return; info = info || this.state.info || {};
+    const o = { app: 'Content Offer Builder', mount: document.querySelector('[data-cos-shell-mount]') || null, saved: 'contentoffers', runMode: 'you',
+      clientId: info.clientId || '', clientName: this.D.clientName(), clients: info.clients || [], userEmail: (info.user && info.user.email) || '', onSignOut: () => this.D.signOut(),
+      onClientChange: (id) => this.pickClient(id), onSave: () => (window.CosLeaveGuard && window.CosLeaveGuard.isDirty() ? this.flushSave() : Promise.resolve()),
+      campaigns: this.state.camps.map((c) => ({ id: c.id, name: c.name })), campaignId: this.shellCampId() || '', onCampaignChange: (id) => this.pickCampaign(id) };
+    if (info.agency) o.agency = info.agency; const org = this.D.orgId(); if (org) o.orgId = org;
+    try { (this._shellOn ? S.update : S.init).call(S, o); this._shellOn = true; } catch (e) { console.warn('CatalystOS header', e); }
+  }
+  shellCampId() { const o = this.state.view === 'offer' ? this.offer() : null; return o ? o.campaignId || '' : this.formCampId() || ''; }
+  // The campaign picker in the purple bar: a new offer's campaign, or (with an offer open) the campaign this offer is for.
+  pickCampaign(id) {
+    if (!id) return; this.D.setCurrentCampaign(id);
+    const o = this.state.view === 'offer' ? this.offer() : null, c = this.campaign(id);
+    if (o) { if (o.campaignId !== id) this.update((x) => { x.campaignId = id; x.campaignName = c ? c.name : ''; return x; }); }
+    else this.setForm({ camp: id });
+  }
+  // Save now (task bar Save, the leave guard): any typed edit, then every save still under way.
+  async flushSave() {
+    const f = this.state.field; if (f && f.val !== f.orig) this.saveField(); if (this.state.emDraft) this.saveEmail();
+    const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
+    const o = this.offer(); if (o) await this.persist(o);
+    if (this._lgP) await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
+  }
+  // ---- the offer catalog (lib/offer-catalog.js) ----
+  entryOf(o) { return this.CAT.catalogOf(o); }
+  formEntry() { return this.state.form.offerType ? this.CAT.byId(this.state.form.offerType) : null; }
+  // Start an offer of this type: the details for it, its funnel and where the piece is made (no AI yet).
+  pickType(id) { const e = this.CAT.byId(id); if (!e) return; this.setState((st) => ({ form: { ...st.form, offerType: e.id, kind: e.engineKind, answers: {}, tpl: e.engineKind === 'webinar' ? (st.form.tpl || 'editorial') : st.form.tpl }, err: '' })); try { window.scrollTo({ top: 0 }); } catch (e2) {} }
   // Switching clients happens right here: the new client's offers, campaigns and brand load, and nothing of the old client stays on screen.
   pickClient = async (id) => {
     const st = this.state, prev = (st.info || {}).clientId;
     if (!id || id === prev) return;
     if (st.busy) return this.setState({ err: 'Please wait until CatalystOS finishes, then switch clients.' });
-    this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
+    this.setState({ boot: 'loading', bootMsg: 'Loading this client’s Brand Command…', offers: [], camps: [], sfList: {}, offerId: null, view: 'new', form: { ...FORM0 }, err: '', note: '', saved: '', emDraft: null, emNote: '', delAsk: false, field: null, zoom: null, seqEdit: null });
     let info = null; try { info = await this.D.switchClient(id); } catch (e) { console.error(e); }
     if (!info) { const back = prev ? await this.D.switchClient(prev).catch(() => null) : null; if (back) await this.useInfo({ ...st.info, ...back }); return this.setState({ boot: back ? 'ready' : 'error', err: 'That client could not be opened. Try again from the dashboard.', bootMsg: 'That client could not be opened. Try again from the dashboard.' }); }
     try { const u = new URL(location.href); u.searchParams.delete('offer'); u.searchParams.set('client', info.clientId || id); if (this.D.orgId()) u.searchParams.set('org', this.D.orgId()); history.replaceState(null, '', u.href); } catch (e) {}
@@ -205,7 +238,7 @@ class Component extends DCLogic {
     return {
       // The whole offer: the strategy and every landing page and email (each approval recorded in Brand Command, as the switches here do).
       async approve(ref, on, rec) { const o = await self.sfOffer(ref, rec); if (!o) return; const a = self.approval(!!on);
-        o.strategyApproved = a; if (o.doc) o.doc.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
+        o.strategyApproved = a; if (o.doc) o.doc.approved = a; if (o.piece) o.piece.approved = a; if (o.popups) o.popups.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
         await self.persist(o);
         if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); if (o.doc) self.D.recordApproval('doc', self.O.offerById(o.kind).label + ' · ' + (o.name || ''), o.doc); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
       // An offer is for one Brand Command campaign: the one newly picked (or none).
@@ -252,19 +285,90 @@ class Component extends DCLogic {
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
   async planNew(alive) {
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const base = { id: 'o' + Date.now(), v: 2, type: 'offer', kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const e = this.formEntry(), base = { id: 'o' + Date.now(), v: 2, type: 'offer', ...(e ? { offerType: e.id, answers: { ...(f.answers || {}) } } : {}), kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     const strategy = await this.D.planOffer({ offer: base, campaign: camp });
     if (!alive()) throw this.stopped();
-    const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || this.O.offerById(f.kind).label, strategy, strategyApproved: null });
-    this.setState({ offerId: o.id, view: 'offer', tab: 'strategy', note: '' });
+    const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || (e ? e.label : this.O.offerById(f.kind).label), strategy, strategyApproved: null });
+    this.setState({ offerId: o.id, view: 'offer', tab: this.funnelRightAway(o) ? 'strategy' : 'doc', note: '' });
     return o;
   }
+  // A new offer is planned and then built in one go when this app makes the piece itself (white paper, guide, case study,
+  // events) or in a hands-off run; otherwise the plan comes first and the piece is made in its own builder next (Part 1).
+  funnelRightAway(o) { const e = this.entryOf(o); return !!this._ccAuto || !o.offerType || this.isDocKind(o) || e.builder === 'webinar'; }
+  // I'll Make This Myself (no AI): the offer is saved with its type and details, and opens on its piece.
+  startManual = async () => {
+    const f = this.state.form, e = this.formEntry(); if (!e || this.state.busy) return;
+    const campId = this.formCampId(), camp = this.campaign(campId);
+    const o = await this.persist({ id: 'o' + Date.now(), v: 2, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() });
+    this.setState({ offerId: o.id, view: 'offer', tab: 'doc', note: '', form: { ...FORM0 } });
+  };
+
+  // ---- Part 1: the piece, made in its own builder ----
+  // Opens the builder (a new tab) with the offer's context. auto = hands-off: it makes the piece and reports back here.
+  async openBuilder(o, auto, w) {
+    const e = this.entryOf(o), job = auto ? 'cob-' + o.id + '-' + Date.now() : '';
+    w = w || window.open('', '_blank');
+    if (!w) { const m = 'Your browser blocked the new tab. Allow pop-ups for this site and try again.'; throw Object.assign(new Error(m), { userMessage: m }); }
+    try { w.document.title = 'Opening the ' + this.CAT.builderOf(e).label + '…'; } catch (x) {}
+    const url = await this.D.builderUrl(e, o, { auto, job });
+    if (!auto) w.opener = null;
+    w.location.href = url; return { job, w };
+  }
+  makeMyself = async () => { const o = this.offer(); if (!o) return; const w = window.open('', '_blank'); try { await this.openBuilder(o, false, w); this.setState({ pieceNote: 'The ' + this.CAT.builderOf(this.entryOf(o)).label + ' opened in a new tab. When it’s saved, link it below from Saved Files.' }); } catch (e) { if (w) w.close(); this.setState({ err: (e && (e.userMessage || e.message)) || 'Could not open the builder.' }); } };
+  // Let CatalystOS Create This on the piece: the builder makes it hands-off; its result (Saved Files) links back here.
+  async makePiece(alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const { job, w } = await this.openBuilder(o, true);
+    const result = await new Promise((resolve, reject) => {
+      const t0 = Date.now();
+      const tick = setInterval(() => {
+        if (!this._pieceWait || this._pieceWait.job !== job) return clearInterval(tick);
+        if (!alive()) { clearInterval(tick); this._pieceWait = null; try { w.close(); } catch (x) {} return reject(this.stopped()); }
+        let closed = false; try { closed = w.closed; } catch (x) {}
+        if (closed || Date.now() - t0 > 45 * 60000) { clearInterval(tick); this._pieceWait = null; const m = closed ? 'The builder tab was closed before it finished. Nothing was linked.' : 'The builder took too long. Check Saved Files and link the piece from there.'; reject(Object.assign(new Error(m), { userMessage: m })); }
+      }, 1000);
+      this._pieceWait = { job, offerId: o.id, resolve: (r) => { clearInterval(tick); resolve(r); }, reject: (e) => { clearInterval(tick); reject(e); } };
+    });
+    if (!alive()) throw this.stopped();
+    await this.linkPiece(o.id, { ...result, by: 'catalystos' });
+  }
+  pieceReport(d) {
+    const pw = this._pieceWait; if (!pw) return;
+    if (d.ok) { this._pieceWait = null; pw.resolve(d.result || {}); }
+    else if (d.ok === false) { this._pieceWait = null; const m = d.error ? 'The builder couldn’t finish: ' + d.error : 'The builder couldn’t finish.'; pw.reject(Object.assign(new Error(m), { userMessage: m })); }
+  }
+  // Link a finished piece (from a hands-off run or picked in Saved Files). The download link is kept unless one was set.
+  linkPiece(id, r) {
+    const e = this.entryOf(this.state.offers.find((x) => x.id === id) || {});
+    const piece = { app: r.app || this.CAT.builderOf(e).app, ref: r.ref != null ? String(r.ref) : '', title: r.title || '', openUrl: r.openUrl || '', thumb: r.thumb || '', pdfUrl: r.pdfUrl || '', by: r.by || 'person', at: Date.now(), approved: null };
+    return this.updateOf(id, (x) => { x.piece = piece; if (piece.pdfUrl && !x.fileUrl) x.fileUrl = piece.pdfUrl; return x; });
+  }
+  async loadSaved(app) { if (!app || (this.state.sfList[app] && !this.state.sfList[app].stale)) return; this.setState((st) => ({ sfList: { ...st.sfList, [app]: { loading: true, items: [] } } })); const items = await this.D.savedFrom(app); this.setState((st) => ({ sfList: { ...st.sfList, [app]: { items } } })); }
+
+  // ---- Part 2: CTA popups ----
+  popupsOf(o) { return o.popups && Array.isArray(o.popups.list) ? o.popups.list : this.D.suggestedPopups(o); }
+  async writePopups(alive) {
+    const o = this.offer(); if (!o) throw new Error('No content offer is open.');
+    const r = await this.D.writeOfferPopups({ offer: o, campaign: this.campaign(o.campaignId), note: (this.state.popNote || '').trim() });
+    if (!alive()) throw this.stopped();
+    await this.updateOf(o.id, (x) => { x.popups = { list: r.popups, by: r.by, at: r.at, approved: null }; return x; });
+    this.setState({ popNote: '', popIdx: 0 });
+  }
+  // Any edit saves the popups on the offer (first edit of the suggested ones saves them) and sends them back to review.
+  editPopup(i, patch) { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); if (!list[i]) return x; list[i] = this.PK.normalizePopup({ ...list[i], ...patch }, i); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); }
+  addPopup() { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); if (list.length >= this.PK.LIMITS.maxPopups) return x; const used = list.map((p) => p.trigger), t = ['exit', 'scroll', 'time'].find((k) => !used.includes(k)) || 'time', e = this.entryOf(x); list.push(this.PK.normalizePopup({ id: 'p' + Date.now().toString(36), trigger: t, headline: 'Get the ' + e.noun, body: e.oneLine, button: e.cta }, list.length)); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); this.setState((st) => ({ popIdx: Math.min(2, (st.popIdx || 0) + 1) })); }
+  removePopup(i) { this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)).filter((_, j) => j !== i); x.popups = { ...(x.popups || {}), list, by: 'person', approved: null }; return x; }); this.setState({ popIdx: 0, popDel: null }); }
+  popupHref(o) { return o.pageUrl || '#'; }
+  snippetOf(o) { return this.PK.embedSnippet(this.popupsOf(o), { brand: this.D.siteBrand(), href: this.popupHref(o), offerId: o.id, title: (o.strategy || {}).title || o.name }); }
+  copySnippet = async () => { const o = this.offer(); if (!o) return; const t = this.snippetOf(o); let ok = false; try { await navigator.clipboard.writeText(t); ok = true; } catch (e) { try { const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px'; document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove(); } catch (e2) {} } this.setState({ snipNote: ok ? 'Copied. Paste it just before </body> on your site.' : 'Couldn’t copy. Use Download Snippet instead.' }); };
+  downloadSnippet = () => { const o = this.offer(); if (!o) return; const blob = new Blob([this.PK.snippetFile(this.popupsOf(o), { brand: this.D.siteBrand(), href: this.popupHref(o), offerId: o.id, title: (o.strategy || {}).title || o.name })], { type: 'text/html' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (o.name || 'content-offer').replace(/[^\w-]+/g, '-').toLowerCase() + '-popups.html'; document.body.appendChild(a); a.click(); a.remove(); };
+
   // Revise the open offer's strategy with the changes the person wrote.
   async replanOffer(note, alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
-    const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note).join('\n') });
+    const strategy = await this.D.planOffer({ offer: o, campaign: this.campaign(o.campaignId), note: (o.notes || []).concat(note || []).join('\n') });
     if (!alive()) throw this.stopped();
-    await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
+    await this.updateOf(o.id, (x) => { x.strategy = strategy; x.notes = (x.notes || []).concat(note || []); x.strategyApproved = null; x.name = strategy.title || x.name; return x; });
     this.setState({ note: '' });
   }
   // Progress for hands-off runs: time-only words, never what is being made or how much of it (Erika, Oct 18).
@@ -310,7 +414,7 @@ class Component extends DCLogic {
   }
   // The conversion engine's pages for this offer (its document, strategy, speakers and the campaign).
   async makeConversion(o, camp) {
-    const st = o.strategy || {}, typeId = o.kind === 'replay' ? 'ondemand' : o.kind;
+    const st = o.strategy || {}, typeId = o.offerType ? this.entryOf(o).convType : o.kind === 'replay' ? 'ondemand' : o.kind;
     const input = { brand: this.D.conversionBrand(), campaign: camp ? { ...camp } : {}, design: { style: (o.design || {}).style },
       offer: { id: o.id, app: this.D.APP, openUrl: this.D.offerOpenUrl(o.id), kind: typeId, title: st.title || o.title || o.name, topic: o.topic, doc: o.doc, strategy: st, speakers: o.speakers, people: o.people, date: o.date, time: o.time, where: o.where, videoUrl: o.videoUrl, fileUrl: o.fileUrl, nextUrl: o.nextUrl, campaignId: o.campaignId, story: o.story, research: o.research },
       spec: o.spec || {}, settings: { formEndpoint: o.formUrl || '', fileUrl: o.fileUrl || '', ...((o.conversion || {}).settings || {}) }, mode: this._ccAuto ? 'autopilot' : 'collaborative' };
@@ -352,7 +456,8 @@ class Component extends DCLogic {
     if (failed) throw failed;
     if (!alive()) throw this.stopped();
   }
-  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide' || o.kind === 'casestudy'); }
+  // The white paper, guide or case study this app writes itself (writeOfferDoc). Catalog types made in another builder never are.
+  isDocKind(o) { return !!o && (o.kind === 'whitepaper' || o.kind === 'guide' || o.kind === 'casestudy') && (!o.offerType || this.CAT.writesInApp(this.entryOf(o))); }
   // The white paper or guide again (from its tab).
   async rewriteDoc(alive) {
     const o = this.offer(); if (!o) throw new Error('No content offer is open.');
@@ -384,8 +489,11 @@ class Component extends DCLogic {
   // (after revising the strategy if the person wrote changes).
   ccTarget() {
     const st = this.state, o = this.offer();
-    if (st.view !== 'offer' || !o) return { what: 'new' };
+    if (st.view !== 'offer' || !o) return this.formEntry() ? { what: 'new' } : { what: 'none' };
     if (st.tab === 'doc' && this.isDocKind(o)) return { what: 'doc' };
+    // The piece made in its own builder (hands-off); events are planned here; interactive tools aren't built yet.
+    if (st.tab === 'doc') { const e = this.entryOf(o); return this.CAT.handsOff(e) ? { what: 'piece' } : e.builder === 'webinar' ? { what: 'offer' } : { what: 'none' }; }
+    if (st.tab === 'popups') return { what: 'popups' };
     if (st.tab === 'pages' && o.pages.length) return { what: 'page', i: Math.min(st.pageIdx, o.pages.length - 1) };
     if (st.tab === 'emails' && o.emails.length) return { what: 'email', i: Math.min(st.emailIdx, o.emails.length - 1) };
     return { what: 'offer' };
@@ -399,17 +507,22 @@ class Component extends DCLogic {
     // In a hands-off run the document's PDF is linked when it is saved (ccAutoSave), so that blocker is reported there instead.
     if (o.conversion && this.CV) { const R = this.CV.scorecard(this.convSite(o), this.D.siteBrand()); (R.blockers || []).filter((b) => !(this._ccAuto && o.doc && /isn’t linked yet/.test(b))).forEach((b) => notes.push('Before publishing the landing page: ' + b)); (R.notes || []).forEach((b) => notes.push(b)); }
     if (this.O.offerById(o.kind).event) notes.push('Make the event graphics (Zoom slides, banners, posts) from the Launch tab: Open the Event Graphics Builder.');
+    const e = this.entryOf(o), B = this.CAT.builderOf(e);
+    if (o.offerType && !this.isDocKind(o) && !o.piece && e.builder !== 'webinar') notes.push(e.ready === false ? 'The ' + e.noun + ' itself is an interactive tool, coming in the next phase. The funnel around it can be planned now.' : 'Next: make the ' + e.noun + ' itself. On its tab, click Let CatalystOS Create This to make it in the ' + B.label + ', or I’ll Make This Myself.');
+    if (this.ccTarget().what === 'popups') notes.push('Check each popup’s wording and timing, then approve them. They never claim numbers the offer doesn’t support.');
     return notes;
   }
   cosCreateMount() {
     const go = () => {
       if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
       window.CatalystCreate.mount({ designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
-        enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit,
-        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
+        enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit && this.ccTarget().what !== 'none',
+        noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'popups') return 'CTA popups'; if (t.what === 'piece') return this.entryOf(o).noun; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
         context: () => {
           const t = this.ccTarget(), o = this.offer(), O = this.O;
-          if (t.what === 'new') { const c = this.campaign(this.formCampId()); return { kind: O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
+          if (t.what === 'new') { const c = this.campaign(this.formCampId()), e = this.formEntry(); return { kind: e ? e.label : O ? O.offerById(this.state.form.kind).label : 'Content offer', campaign: c ? c.name : '' }; }
+          if (t.what === 'piece') { const e = this.entryOf(o); return { kind: e.label + ' (in the ' + this.CAT.builderOf(e).label + ')', campaign: o.campaignName || '' }; }
+          if (t.what === 'popups') return { kind: 'CTA popups', campaign: o.campaignName || '' };
           const kind = t.what === 'doc' ? O.offerById(o.kind).label + ' (the document)' : t.what === 'page' ? 'Landing page: ' + o.pages[t.i].title : t.what === 'email' ? 'Email: ' + o.emails[t.i].name : O.offerById(o.kind).label;
           return { kind, campaign: o.campaignName || '' };
         },
@@ -427,11 +540,13 @@ class Component extends DCLogic {
           const gen = this._ccGen = (this._ccGen || 0) + 1, alive = () => gen === this._ccGen;
           const t = this.ccTarget(); this.setState({ busy: true, err: '', field: null, delAsk: false });
           try {
-            if (t.what === 'new') { await this.planNew(alive); await this.buildOffer(alive); }
+            if (t.what === 'new') { const o1 = await this.planNew(alive); if (this.funnelRightAway(o1)) await this.buildOffer(alive); }
+            else if (t.what === 'piece') await this.makePiece(alive);
+            else if (t.what === 'popups') await this.writePopups(alive);
             else if (t.what === 'doc') await this.rewriteDoc(alive);
             else if (t.what === 'page') await this.rewritePage(t.i, alive);
             else if (t.what === 'email') await this.rewriteEmailAt(t.i, alive);
-            else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note) await this.replanOffer(note, alive); await this.buildOffer(alive); }
+            else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note || !(this.offer() || {}).strategy) await this.replanOffer(note, alive); await this.buildOffer(alive); }
             if (!alive()) throw this.stopped();
             return { notes: this.ccNotes() };
           } finally { if (alive()) this.setState({ busy: false }); }
@@ -464,10 +579,12 @@ class Component extends DCLogic {
     const camp0 = this.campaign(p.campaign), ot = String(spec.offerType || '').toLowerCase();
     const specKind = { 'guide or checklist': 'guide', 'white paper or report': 'whitepaper', webinar: 'webinar', workshop: 'workshop', 'webinar replay': 'replay', 'case study': 'casestudy', ebook: 'guide', checklist: 'guide', 'research report': 'whitepaper', report: 'whitepaper', 'white paper': 'whitepaper', guide: 'guide' }[ot];
     const fromWords = (t) => (/replay|on[- ]demand|recording/.test(t) ? 'replay' : /webinar/.test(t) ? 'webinar' : /workshop|masterclass|bootcamp/.test(t) ? 'workshop' : /case stud|success stor/.test(t) ? 'casestudy' : /white ?paper|report|research/.test(t) ? 'whitepaper' : /guide|checklist|playbook|ebook|e-book|toolkit|workbook/.test(t) ? 'guide' : '');
-    const kind = specKind || fromWords(String((camp0 && camp0.offer) || '').toLowerCase()) || fromWords(words) || 'whitepaper';
+    const ce = this.CAT.findType(spec.offerType || '') || null;
+    const kind = (ce && ce.engineKind) || specKind || fromWords(String((camp0 && camp0.offer) || '').toLowerCase()) || fromWords(words) || 'whitepaper';
+    const offerType = ce ? ce.id : (this.CAT.fromLegacy(kind) || {}).id || null;
     this._ccAuto = { title: String(p.title || '').trim() };
     await new Promise((r) => this.setState({ view: 'new', offerId: null, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', note: '', emDraft: null, emNote: '', delAsk: false, zoom: null, seqEdit: null,
-      form: { ...FORM0, kind, story: String(p.story || '').slice(0, 6000), research: String(p.research || '').slice(0, 8000), date: String(spec.eventDate || ''), time: [spec.eventTime, spec.eventTimezone].filter(Boolean).join(' '), speakers: /^(whitepaper|guide|casestudy)$/.test(kind) && 'voiceOf' in spec ? (String(spec.voiceOf || '').trim() ? [String(spec.voiceOf).trim()] : []) /* a written offer: its author is Run Campaign's "Written by" (none = the company voice), never the event speakers */ : Array.isArray(spec.speakers) ? spec.speakers.slice(0, 6) : [], title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
+      form: { ...FORM0, offerType, kind, story: String(p.story || '').slice(0, 6000), research: String(p.research || '').slice(0, 8000), date: String(spec.eventDate || ''), time: [spec.eventTime, spec.eventTimezone].filter(Boolean).join(' '), speakers: /^(whitepaper|guide|casestudy)$/.test(kind) && 'voiceOf' in spec ? (String(spec.voiceOf || '').trim() ? [String(spec.voiceOf).trim()] : []) /* a written offer: its author is Run Campaign's "Written by" (none = the company voice), never the event speakers */ : Array.isArray(spec.speakers) ? spec.speakers.slice(0, 6) : [], title: String(p.title || '').trim(), topic: ((spec.offerTopic ? 'Topic: ' + spec.offerTopic + '. ' : '') + String(p.brief || '')).trim(), camp: p.campaign || 'none' } }, r));
   }
   // Save exactly as the app does (the offer, then its Saved Files entry with the campaign), waited for; first landing page as the thumbnail.
   async ccAutoSave(p) {
@@ -564,13 +681,16 @@ class Component extends DCLogic {
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
     const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind });
-    o.pages.forEach((p, i) => { files['landing-pages/' + p.slug + '.html'] = this.renderOfferPage(o, i, b); });
+    // The CTA popups go into the main landing page (never the thank-you page), and as a snippet for the client's own site.
+    const pops = this.PK.normalizeAll(this.popupsOf(o)), popOpts = { brand: this.D.siteBrand(), href: o.pageUrl || '#', offerId: o.id, title: (o.strategy || {}).title || o.name };
+    o.pages.forEach((p, i) => { const html = this.renderOfferPage(o, i, b); files['landing-pages/' + p.slug + '.html'] = i === 0 && pops.length ? this.PK.injectIntoPage(html, pops, popOpts) : html; });
+    if (pops.length) files['popups/embed-snippet.html'] = this.PK.snippetFile(pops, popOpts);
     if (o.conversion && this.CV) files['landing-pages/conversion-plan.md'] = this.CV.planMarkdown(this.convSite(o));
     o.emails.forEach((e, i) => { if (!e.content) return; const nm = String(i + 1).padStart(2, '0') + '-' + e.key; files['emails/' + nm + '.html'] = this.emailHtml(o, e); files['emails/' + nm + '.txt'] = 'Subject: ' + e.content.subject + '\nPreview text: ' + e.content.preheader + '\n\n' + this.E.emailText({ ...e.content, cta: this.ctaOf(o, e).text }, { brand: b, esp: o.esp, href: this.ctaOf(o, e).url }); });
     const st = o.strategy || {};
     files['send-schedule.csv'] = 'Order,Email,Subject,When,To,Goal\n' + o.emails.map((e, i) => [i + 1, e.name, (e.content || {}).subject || '', e.when, e.to, e.goal].map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\n');
     files['strategy.md'] = '# ' + (st.title || o.name) + '\n\n' + O.label + (o.campaignName ? ' · Campaign: ' + o.campaignName : '') + '\n\n' + (st.summary || '') + '\n\n## Objective\n' + ((st.objective || {}).text || '') + '\n\nWhy: ' + ((st.objective || {}).why || '') + '\n\n## Audience\n' + ((st.audience || {}).text || '') + '\n\nPain: ' + ((st.audience || {}).pain || '') + '\n\nWhy: ' + ((st.audience || {}).why || '') + '\n\n## Angle\n' + ((st.angle || {}).text || '') + '\n\nWhy: ' + ((st.angle || {}).why || '') + '\n\n## Why this offer fits\n' + (st.fit || '') + '\n\n## Landing pages\n' + (st.pages || []).map((p) => '- ' + p.key + ': ' + p.job + ' (why: ' + p.why + ')').join('\n') + '\n\n## Emails\n' + (st.emails || []).map((e, i) => (i + 1) + '. ' + e.name + ' — ' + e.when + ', to ' + e.to + ': ' + e.goal + ' (why: ' + e.why + ')').join('\n') + '\n\n## Metrics\n' + (st.metrics || []).map((m) => '- ' + m.name + ': ' + m.target + ' — ' + m.why).join('\n') + '\n\n## Assumptions to confirm\n' + (st.assumptions || []).map((x) => '- ' + x).join('\n') + '\n\n## Risks\n' + (st.risks || []).map((x) => '- ' + x).join('\n') + '\n';
-    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\n' + (o.doc ? 'document/: the ' + O.noun + ' itself (open it in a browser; for the PDF use Download PDF on its tab).\n' : '') + 'landing-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
+    files['README.txt'] = (st.title || o.name) + '\nBuilt with CatalystOS Content Offer Builder.\n\n' + (o.doc ? 'document/: the ' + O.noun + ' itself (open it in a browser; for the PDF use Download PDF on its tab).\n' : '') + 'landing-pages/: upload to your website or landing page tool (index.html is the main page). Connect the form to your form service' + (o.formUrl ? ' (it posts to ' + o.formUrl + ')' : '') + '.' + (pops.length ? '\npopups/embed-snippet.html: the CTA popups (already on index.html) to paste on your own site, just before </body>.' : '') + '\nemails/: one HTML and one plain-text file per email, with ' + E.name + ' merge tags. Send them on the schedule in send-schedule.csv.\nstrategy.md: the plan and the reasons behind it.\n\nAnything in [brackets] still needs a real detail filled in before launch.\n';
     try { const blob = await this.D.zipOffer(o, files); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (o.name || 'content-offer').replace(/[^\w-]+/g, '-').toLowerCase() + '.zip'; document.body.appendChild(a); a.click(); a.remove(); }
     catch (e) { this.setState({ err: 'Could not make the download: ' + (e && e.message || e) }); }
   };
@@ -579,17 +699,116 @@ class Component extends DCLogic {
     const o = this.offer(); if (!o) return; await this.deleteOfferNow(o.id);
   };
 
+  // ---------- view values: the new-offer picker and details ----------
+  newVals(st, f) {
+    const CAT = this.CAT, e = this.formEntry(), q = st.pickQ || '', G = CAT.groups(q), B = (x) => CAT.builderOf(x);
+    const badge = (x) => 'align-self:flex-start;font:800 10.5px Manrope,sans-serif;letter-spacing:.02em;border-radius:999px;padding:3px 9px;' + (x.ready === false ? 'background:#FFF4CC;color:#6B4E00;' : 'background:#F1EBFF;color:#3B1A8F;');
+    return { isPicker: st.view === 'new' && !e, isNewForm: st.view === 'new' && !!e,
+      pickQ: q, setPickQ: (ev) => this.setState({ pickQ: ev.target.value }), pickCount: CAT.CATALOG.length + ' offer types', pickNone: !G.length,
+      pickResult: q.trim() ? G.reduce((n, g) => n + g.items.length, 0) + ' of ' + CAT.CATALOG.length + ' offer types match' : '',
+      pickGroups: G.map((g) => ({ headId: 'cob-cat-' + g.id, title: (g.extra ? 'More: ' : g.id + '. ') + g.label, items: g.items.map((x) => ({ label: x.label, oneLine: x.oneLine, builder: x.ready === false ? 'Interactive · coming next phase' : 'Made in the ' + B(x).label, badgeStyle: badge(x), aria: x.label + '. ' + x.oneLine + ' ' + (x.ready === false ? 'Interactive tool, coming in the next phase.' : 'Made in the ' + B(x).label + '.'), pick: () => this.pickType(x.id) })) })),
+      newTypeLabel: e ? e.label : '', newTypeLine: e ? e.oneLine : '', newTypeBuilder: e ? (e.ready === false ? 'Interactive tool · the builder is coming in the next phase' : e.inApp ? 'Written here, or in the ' + B(e).label : e.builder === 'webinar' ? 'Planned here · made in the Webinar Creator and Event Graphics' : 'Made in the ' + B(e).label) : '',
+      changeType: () => this.setState((s2) => ({ form: { ...s2.form, offerType: null } })), startManual: this.startManual,
+      typeQs: e ? e.questions.map((qq) => ({ label: qq.label, placeholder: qq.placeholder || '', value: (f.answers || {})[qq.key] || '', long: !!qq.long, short: !qq.long, set: (ev) => { const v = ev.target.value; this.setState((s2) => ({ form: { ...s2.form, answers: { ...(s2.form.answers || {}), [qq.key]: v } } })); } })) : [],
+      hasTypeQs: !!(e && e.questions.length),
+      partSteps: e ? [['1', 'Make the offer', e.ready === false ? 'The ' + e.noun + ' is an interactive tool. Its builder comes in the next phase.' : e.inApp ? 'CatalystOS writes the ' + e.noun + ' here, or you make it in the ' + B(e).label + '.' : e.builder === 'webinar' ? 'The event is planned here; the Webinar Creator and Event Graphics make the session’s video and graphics.' : 'Made in the ' + B(e).label + ', by CatalystOS or by you.'], ['2', 'Build the funnel', 'Landing and thank-you pages, a timed email sequence and CTA popups around the ' + e.noun + '.'], ['3', 'Launch', 'A checklist: pages, sequence, popups and approvals. Download everything, or paste the popups on your own site.']].map(([n, t, d]) => ({ n, t, d })) : [] };
+  }
+  // ---------- Part 1: the piece ----------
+  pieceVals(o, st, e, isDoc) {
+    const B = this.CAT.builderOf(e), pc = o.piece, sf = st.sfList[B.app] || null, hand = this.CAT.handsOff(e);
+    if (st.tab === 'doc' && !isDoc && e.builder !== 'webinar' && e.ready !== false && !sf) setTimeout(() => this.loadSaved(B.app), 0);
+    const items = (sf && sf.items) || [];
+    return { pieceBuilder: B.label, pieceWhat: e.oneLine, pieceLabel: e.label, pieceNoun: e.noun,
+      pieceExternal: !isDoc && e.builder !== 'webinar' && e.ready !== false, pieceWebinar: e.builder === 'webinar', pieceComing: e.ready === false, pieceInApp: isDoc,
+      pieceHow: isDoc ? 'CatalystOS writes the ' + e.noun + ' right here: click Let CatalystOS Create This. You can also make it yourself in the ' + B.label + '.'
+        : hand ? 'Click Let CatalystOS Create This and the ' + B.label + ' makes the ' + e.noun + ' by itself in a new tab (keep this tab open). It comes back here when it’s saved. Or make it yourself.' : 'Make it yourself in the ' + B.label + ', then link it here from Saved Files.',
+      hasPiece: !isDoc && !!pc, noPiece: !isDoc && !pc, pieceTitle: pc ? pc.title || e.label : '', pieceThumb: pc && pc.thumb ? pc.thumb : '', hasPieceThumb: !!(pc && pc.thumb), noPieceThumb: !(pc && pc.thumb),
+      pieceOpen: pc ? pc.openUrl || '#' : '#', hasPieceOpen: !!(pc && pc.openUrl), pieceMeta: pc ? (pc.by === 'catalystos' ? 'Made by CatalystOS' : 'Linked from Saved Files') + ' in the ' + B.label + ' · ' + new Date(pc.at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (pc.approved ? ' · Approved by ' + (pc.approved.by || 'you') : '') : '',
+      pieceApprovedAria: pc && pc.approved ? 'true' : 'false', pieceTrack: track(!!(pc && pc.approved)), pieceKnob: knob(!!(pc && pc.approved)),
+      togglePiece: () => this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }),
+      unlinkPiece: () => { if (st.pieceDel !== o.id) return this.setState({ pieceDel: o.id }); this.setState({ pieceDel: null }); this.update((x) => { delete x.piece; return x; }); },
+      unlinkLabel: st.pieceDel === o.id ? 'Click again to unlink' : 'Unlink',
+      makeMyself: this.makeMyself, pieceNote: st.pieceNote || '', pieceNoteOn: !!st.pieceNote,
+      sfLoading: !!(sf && sf.loading), sfHasItems: items.length > 0, sfEmpty: !!sf && !sf.loading && !items.length,
+      sfOptions: items.map((x, i) => ({ id: String(i), label: x.title + (x.at ? ' · ' + new Date(x.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') })),
+      pickSaved: (ev) => { const x = items[+ev.target.value]; if (x) this.linkPiece(o.id, { ...x, by: 'person' }); },
+      refreshSaved: () => { this.setState((s2) => ({ sfList: { ...s2.sfList, [B.app]: null } })); },
+      webinarCreatorUrl: B.url + '?client=' + encodeURIComponent(this.D.clientId()) + (this.D.orgId() ? '&org=' + encodeURIComponent(this.D.orgId()) : ''), openGraphics2: this.openGraphics };
+  }
+  // ---------- Part 2: the funnel ----------
+  funnelVals(o, st, e, isDoc) {
+    const B = this.CAT.builderOf(e), dk = o.doc, pc = o.piece, b = this.D.siteBrand();
+    let docMini = '';
+    if (st.tab === 'funnel' && isDoc && dk) { const ck = JSON.stringify([dk, o.kind, b.primary, b.logo]); if (!this._miniDoc || this._miniDoc.k !== ck) this._miniDoc = { k: ck, html: this.Dk.renderDoc(dk, b, { kind: o.kind }) }; docMini = this._miniDoc.html; }
+    const have = isDoc ? dk : pc, isEv = !!this.O.offerById(o.kind).event;
+    const planned = !o.emails.length, seq = planned ? this.D.seqFor(o) : o.emails;
+    const pops = this.PK.normalizeAll(this.popupsOf(o));
+    const go = (t) => () => this.setState({ tab: t, field: null });
+    return { funHasOffer: !!have, funNoOffer: !have, funDocMini: docMini, funHasMini: !!docMini, funHasCard: !docMini && !!have,
+      funOfferTitle: isDoc ? (dk && dk.title) || o.name : pc ? pc.title || e.label : '', funOfferMeta: isDoc ? 'Written here · ' + ((dk && dk.sections) || []).length + ' sections' : pc ? 'In Saved Files · ' + B.label : '',
+      funThumb: pc && pc.thumb ? pc.thumb : '', funHasThumb: !!(pc && pc.thumb && !isDoc), funOpen: pc && pc.openUrl ? pc.openUrl : '', funHasOpen: !!(pc && pc.openUrl && !isDoc),
+      funApprovedAria: have && have.approved ? 'true' : 'false', funTrack: track(!!(have && have.approved)), funKnob: knob(!!(have && have.approved)),
+      funToggle: () => { if (isDoc) { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.D.recordApproval('doc', e.label + ' · ' + (x.name || ''), x.doc); return x; }); } else this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }); },
+      funGoPiece: go('doc'), funGoPages: go('pages'), funGoEmails: go('emails'), funGoPopups: go('popups'), funGoLaunch: go('launch'), funPieceLabel: e.label,
+      funNoOfferText: e.ready === false ? 'The ' + e.noun + ' is an interactive tool, coming in the next phase. You can still build its funnel.' : 'The ' + e.noun + ' isn’t made yet. Make it on its tab first; the landing page is written from it.',
+      funPages: o.pages.map((p) => ({ title: p.title, status: p.approved ? '✓ Approved' : p.sections.length ? 'Needs review' : 'Not written yet', style: p.approved ? 'color:#14663A;' : 'color:#4A5168;' })), funNoPages: !o.pages.length,
+      funSeqNote: planned ? 'The planned sequence for a ' + e.noun + '. Click Let CatalystOS Create This on this tab to write the pages and emails.' : isEv ? 'Timed to the event: before and after it.' : 'Day 0 is launch day for the invitations, and the day someone signs up for everything after.',
+      funSeq: seq.map((x, i) => ({ n: i + 1, day: this.CAT.dayLabel(x, isEv), name: x.name, to: x.to, status: planned ? 'Planned' : x.approved ? '✓ Approved' : x.content ? 'Needs review' : 'Not written yet' })),
+      funPops: pops.map((p) => ({ trig: this.PK.triggerText(p), headline: p.headline })), funPopsNote: o.popups ? (o.popups.approved ? 'Approved.' : 'Needs review.') : 'Suggested from the offer; not saved yet.' };
+  }
+  // ---------- Part 2: CTA popups ----------
+  popupVals(o, st, e, pops) {
+    const n = pops.length, i = Math.min(st.popIdx || 0, Math.max(0, n - 1)), p0 = pops[i], dr = st.popDraft && st.popDraft.id === o.id && st.popDraft.i === i ? st.popDraft : null;
+    const p = p0 ? { ...p0, ...(dr ? dr.v : {}) } : null, b = this.D.siteBrand();
+    const setD = (k) => (ev) => { const v = ev.target.value; this.setState((s2) => { const d0 = s2.popDraft && s2.popDraft.id === o.id && s2.popDraft.i === i ? s2.popDraft.v : {}; return { popDraft: { id: o.id, i, v: { ...d0, [k]: v } } }; }); };
+    const src = [JSON.stringify(o.strategy || {}), this.D.wordsOf(o.doc || {}), o.topic || ''].join('\n');
+    const bad = p ? this.PK.unsupportedClaims([p.headline, p.body, p.button].join(' '), src) : [];
+    const T = p ? this.PK.TRIGGERS.find((t) => t.id === p.trigger) || this.PK.TRIGGERS[2] : null, C = this.PK.colorsFor(b);
+    const prevKey = p ? JSON.stringify([p, C]) : ''; if (p && (!this._popPrev || this._popPrev.k !== prevKey)) this._popPrev = { k: prevKey, html: this.PK.previewDoc(p, { brand: b }) };
+    const chip = (on) => 'display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:9px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
+    return { popSaved: !!o.popups, popSuggested: !o.popups && n > 0, popNone: !n, popHas: !!p,
+      popTabs: pops.map((x, j) => ({ label: 'Popup ' + (j + 1) + ' · ' + this.PK.triggerText(x), current: j === i ? 'true' : 'false', style: chip(j === i), pick: () => this.setState({ popIdx: j, popDraft: null, popDel: null }) })),
+      popCanAdd: n < this.PK.LIMITS.maxPopups, addPopup: () => this.addPopup(),
+      popTrigger: p ? p.trigger : 'exit', popTriggerOptions: this.PK.TRIGGERS.map((t) => ({ id: t.id, label: t.label })), setPopTrigger: setD('trigger'),
+      popHasValue: !!(T && T.id !== 'exit'), popValueLabel: T ? (T.id === 'time' ? 'Seconds on the page (' + T.min + ' to ' + T.max + ')' : 'Percent of the page scrolled (' + T.min + ' to ' + T.max + ')') : '', popValue: p ? String(p.value || (T ? T.def : '')) : '', setPopValue: setD('value'),
+      popHeadline: p ? p.headline : '', setPopHeadline: setD('headline'), popHeadCount: p ? String(p.headline).length + ' / ' + this.PK.LIMITS.headline : '',
+      popBody: p ? p.body : '', setPopBody: setD('body'), popBodyCount: p ? String(p.body).length + ' / ' + this.PK.LIMITS.body : '',
+      popButton: p ? p.button : '', setPopButton: setD('button'), popFreq: p ? String(p.frequencyDays) : '7', setPopFreq: setD('frequencyDays'),
+      popDirty: !!dr, popClean: !dr, savePopup: () => { if (!dr) return; this.editPopup(i, dr.v); this.setState({ popDraft: null }); }, cancelPopup: () => this.setState({ popDraft: null }),
+      popClaims: bad.length ? 'Check before saving: “' + bad.join('”, “') + '” isn’t in the offer’s own material. Popups never claim numbers the offer doesn’t support.' : '', popHasClaims: !!bad.length,
+      popRemove: () => { if (st.popDel !== i) return this.setState({ popDel: i }); this.removePopup(i); }, popRemoveLabel: st.popDel === i ? 'Click Again to Delete' : 'Delete Popup',
+      popApprovedAria: o.popups && o.popups.approved ? 'true' : 'false', popTrack: track(!!(o.popups && o.popups.approved)), popKnob: knob(!!(o.popups && o.popups.approved)),
+      togglePopups: () => this.update((x) => { const list = this.PK.normalizeAll(this.popupsOf(x)); x.popups = { ...(x.popups || { by: 'suggested', at: Date.now() }), list, approved: this.approval(!(x.popups && x.popups.approved)) }; return x; }),
+      popPreview: p ? this._popPrev.html : '', popPreviewTitle: 'Live preview of popup ' + (i + 1) + ' on a sample page',
+      popColors: 'Panel ' + C.bg + ' with ' + (C.ink === '#FFFFFF' ? 'white' : 'dark') + ' text · button ' + C.btn + ' with ' + (C.btnInk === '#FFFFFF' ? 'white' : 'dark') + ' text (switches automatically for contrast)',
+      popNoteVal: st.popNote || '', setPopNote: (ev) => this.setState({ popNote: ev.target.value }),
+      popWhere: 'They link to ' + (o.pageUrl ? o.pageUrl : 'the landing page (set its address on the Launch tab)') + '. On the landing page itself, the button takes people to the form.' };
+  }
+  // ---------- Part 3: the launch checklist ----------
+  launchVals(o, st, e, isDoc, pops) {
+    const nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((x) => x.approved).length, have = isDoc ? o.doc : o.piece;
+    const row = (label, ok, detail, tab) => ({ label, detail, mark: ok ? '✓' : '○', status: ok ? 'Ready' : 'Not yet', markStyle: 'flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 13px Manrope,sans-serif;' + (ok ? 'background:#E8F6EE;color:#14663A;border:1px solid #14663A;' : 'background:#FFFFFF;color:#4A5168;border:1px solid #9AA1B5;'), statusStyle: 'font:800 12px Manrope,sans-serif;' + (ok ? 'color:#14663A;' : 'color:#6B4E00;'), go: () => this.setState({ tab, field: null }), goLabel: 'Open ' + label });
+    const checklist = [
+      row('The ' + e.noun, !!(have && have.approved), have ? (have.approved ? 'Approved' : 'Made; needs approval') : e.ready === false ? 'Interactive tool: coming in the next phase' : 'Not made yet', 'doc'),
+      row('Landing and thank-you pages', nP > 0 && apP === nP, nP ? apP + ' of ' + nP + ' approved' : 'Not written yet', 'pages'),
+      row('Email sequence', nE > 0 && apE === nE, nE ? apE + ' of ' + nE + ' approved' : 'Not written yet', 'emails'),
+      row('CTA popups', !!(o.popups && o.popups.approved && pops.length), pops.length ? pops.length + (pops.length === 1 ? ' popup' : ' popups') + (o.popups && o.popups.approved ? ', approved' : o.popups ? ', needs approval' : ', suggested (not saved)') : 'None', 'popups'),
+      row('Strategy', !!o.strategyApproved, o.strategy ? (o.strategyApproved ? 'Approved' : 'Needs approval') : 'Not planned yet', 'strategy'),
+    ];
+    const ready = checklist.filter((c) => c.mark === '✓').length;
+    return { checklist, checkSummary: ready + ' of ' + checklist.length + ' ready', hasPops: pops.length > 0, copySnippet: this.copySnippet, downloadSnippet: this.downloadSnippet, snipNote: st.snipNote || '', snipNoteOn: !!st.snipNote };
+  }
   renderVals() {
     const st = this.state, ready = st.boot === 'ready', info = st.info || {};
-    const base = { showShell: true, agency: info.agency || '', clientName: this.D ? this.D.clientName() : '', clientId: info.clientId || '', email: (info.user && info.user.email) || '', backHref: this.D ? this.D.dashboardUrl() : '#', clients: info.clients || [], pickClient: this.pickClient, signOut: () => this.D && this.D.signOut(),
+    const base = { showShell: !window.CatalystShell, agency: info.agency || '', clientName: this.D ? this.D.clientName() : '', clientId: info.clientId || '', email: (info.user && info.user.email) || '', backHref: this.D ? this.D.dashboardUrl() : '#', clients: info.clients || [], pickClient: this.pickClient, signOut: () => this.D && this.D.signOut(),
       notReady: !ready, isLoading: st.boot === 'loading', bootTitle: st.boot === 'loading' ? 'Loading' : st.boot === 'error' ? 'Something went wrong' : 'Content Offer Builder', bootMsg: st.bootMsg, hasErr: !!st.err, err: st.err, busy: st.busy };
     if (!ready || !this.O) return { ...base, ready: false };
     const O = this.O, f = st.form, K = O.offerById(f.kind), o = this.offer(), isOffer = st.view === 'offer' && !!o;
     const campId = this.formCampId();
     const offerRows = st.offers.map((x) => { const on = x.id === st.offerId && isOffer; const nApp = (x.pages || []).filter((p) => p.approved).length + (x.emails || []).filter((e) => e.approved).length, nAll = (x.pages || []).length + (x.emails || []).length;
-      return { name: x.name || 'Content offer', meta: O.offerById(x.kind).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, delAsk: false, err: '' }),
+      return { name: x.name || 'Content offer', meta: this.entryOf(x).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, popDraft: null, popIdx: 0, delAsk: false, err: '', pieceNote: '', snipNote: '' }),
         style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
-    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, newOffer: () => this.setState({ view: 'new', offerId: null, err: '', delAsk: false }),
+    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, ...this.newVals(st, f), newOffer: () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } })),
       campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
       kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
@@ -605,9 +824,9 @@ class Component extends DCLogic {
         style: 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 8px 10px;border-radius:12px;cursor:pointer;text-align:left;' + ((f.tpl || 'editorial') === t.id ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FAFAFC;border:1px solid #E6E8EC;') })) : [],
       peopleLabel: K.event || K.replay ? 'Speakers (from Brand Command)' : 'Author (optional)', peopleVal: f.people, setPeople: (e) => this.setForm({ people: e.target.value }),
       offersLabel: 'Content offers (' + st.offers.length + ')', noOffers: !st.offers.length, offerRows,
-      funnelTitle: 'How a ' + K.noun + ' offer comes together',
+      funnelTitle: this.formEntry() ? 'How the ' + this.formEntry().label + ' offer comes together' : 'How a ' + K.noun + ' offer comes together',
       funnelPages: K.pages.map((k) => ({ label: 'See the ' + (k === 'offer' ? 'main landing page' : this.K.PAGES[k].title) + ' sample larger', doc: this.sampleDoc(f.kind, k), open: () => this.setState({ zoom: { kind: f.kind, key: k } }), title: k === 'offer' ? 'Main landing page' : this.K.PAGES[k].title, text: K.replay ? ({ offer: 'Sign-up page: the replay video with an arrow to play it, what they’ll learn, the speakers, the form.', video: 'The replay itself: the video, its chapters and the next step.' }[k] || '') : { offer: K.event ? 'Registration page: what it is, who it’s for, what they’ll learn, the form.' : 'Download page: the promise, what’s inside, who wrote it, the form.', thanks: K.event ? 'Confirmation and what happens next.' : 'Delivers the download and suggests the next step.', speakers: 'Who is presenting and why they’re worth hearing.', details: 'Agenda and logistics.' }[k] || '' })),
-      funnelEmails: this.D.seqFor({ kind: f.kind, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
+      funnelEmails: this.D.seqFor({ kind: f.kind, offerType: f.offerType, seed: (f.seed || {})[f.kind] }).map((e, i) => ({ n: i + 1, name: e.name, goal: e.goal, when: e.when, to: e.to, edited: !!e.byPerson, label: 'Edit email ' + (i + 1) + ': ' + e.name, doc: this.sampleEmailDoc(f.kind, e, i),
         open: () => { const sd = ((f.seed || {})[f.kind] || {})[e.key] || {}; this.setState({ seqEdit: { kind: f.kind, key: e.key, i, plan: { name: e.name, when: e.when, to: e.to, goal: e.goal }, copy: { ...this.sampleEmail(f.kind, e), ...(sd.copy || {}) } } }); } })) };
     if (st.zoom) { const zk = st.zoom.key, zLap = st.zDev !== 'phone', segB = (on) => 'height:32px;padding:0 12px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (on ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;');
       Object.assign(vals, { hasZoom: true, zoomTitle: (zk === 'offer' ? 'Main landing page' : this.K.PAGES[zk].title) + ' · ' + O.offerById(st.zoom.kind).label, zoomText: 'Sample design in ' + base.clientName + '’s brand', zoomDoc: this.sampleDoc(st.zoom.kind, zk, st.zoom.tpl),
@@ -627,10 +846,15 @@ class Component extends DCLogic {
     if (!isOffer) return vals;
 
     const s = o.strategy || {}, nP = o.pages.length, nE = o.emails.length, apP = o.pages.filter((p) => p.approved).length, apE = o.emails.filter((e) => e.approved).length;
-    const isDoc = this.isDocKind(o), tab = st.tab === 'doc' && !isDoc ? 'strategy' : st.tab, tabDef = [['strategy', 'Strategy', o.strategyApproved ? '✓' : 'Review']].concat(isDoc ? [['doc', O.offerById(o.kind).label, o.doc ? (o.doc.approved ? '✓' : 'Review') : '']] : [], [['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['launch', 'Launch', '']]);
-    Object.assign(vals, { offerName: o.name || 'Content offer', offerMeta: O.offerById(o.kind).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
+    const isDoc = this.isDocKind(o), ent = this.entryOf(o), tab = st.tab, pieceDone = isDoc ? o.doc : o.piece, pops = this.PK.normalizeAll(this.popupsOf(o));
+    // Part 1 (the offer itself) · Part 2 (the funnel: pages, sequence, popups) · Part 3 (launch).
+    const tabDef = [['strategy', 'Strategy', o.strategy ? (o.strategyApproved ? '✓' : 'Review') : ''], ['doc', ent.label, pieceDone ? (pieceDone.approved ? '✓' : 'Review') : ''], ['funnel', 'Funnel', ''], ['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['popups', 'CTA popups', o.popups ? (o.popups.approved ? '✓' : 'Review') : pops.length ? 'Suggested' : ''], ['launch', 'Launch', '']];
+    Object.assign(vals, { saveNow: async () => { try { this.setState({ err: '' }); await this.flushSave(); } catch (e) { this.setState({ err: 'Could not save: ' + (e && e.message || e) }); } }, saveDisabled: !!st.busy,
+      offerName: o.name || 'Content offer', offerMeta: this.entryOf(o).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
       tabs: tabDef.map(([id, label, badge]) => ({ label, selected: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id, field: null }), style: btnTab(tab === id), badge, badgeStyle: badge ? 'margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:2px 8px;' + (tab === id ? 'background:#FFFFFF;color:#081A53;' : 'background:#F1EBFF;color:#3B1A8F;') : 'display:none;' })),
-      tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch' });
+      tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch', tabFunnel: tab === 'funnel', tabPopups: tab === 'popups',
+      hasStrategy: !!o.strategy, noStrategy: !o.strategy });
+    Object.assign(vals, this.pieceVals(o, st, ent, isDoc), this.funnelVals(o, st, ent, isDoc), this.popupVals(o, st, ent, pops));
 
     // Strategy
     const D = (label, x, extra) => ({ label, text: (x && x.text) || '—', extra: extra || '', why: (x && x.why) || '—', source: (x && x.source) || '' });
@@ -649,7 +873,7 @@ class Component extends DCLogic {
     const dk = o.doc, dNoun = O.offerById(o.kind).noun, dBrand = this.D.siteBrand();
     if (tab === 'doc') { const ck = JSON.stringify([dk, o.kind, dBrand.primary, dBrand.secondary, dBrand.accent, dBrand.logo, dBrand.logoWhite, dBrand.head, dBrand.body, (dBrand.images || [])[0]]);
       if (!this._docCache || this._docCache.k !== ck) this._docCache = { k: ck, html: dk ? this.Dk.renderDoc(dk, dBrand, { kind: o.kind, editable: true }) : '' }; }
-    Object.assign(vals, { docNoun: dNoun, docLabel: O.offerById(o.kind).label, hasDoc: !!dk, noDoc: !dk, docWriting: !dk && st.busy, docIdle: !dk && !st.busy,
+    Object.assign(vals, { docNoun: dNoun, docLabel: ent.label, isDocPiece: isDoc, hasDoc: isDoc && !!dk, noDoc: !dk, docWriting: isDoc && !dk && st.busy, docIdle: isDoc && !dk && !st.busy,
       docSrc: tab === 'doc' && dk ? this._docCache.html : '', docFrameTitle: 'The ' + dNoun + ', page by page (click any text to edit it)',
       docInfo: dk ? (st.docPages ? st.docPages + ' pages · ' : '') + (dk.sections || []).length + ' sections' + (dk.approved ? ' · Approved by ' + (dk.approved.by || 'you') : dk.by === 'person' ? ' · Edited by you' : ' · Written by CatalystOS') : '',
       docApprovedAria: dk && dk.approved ? 'true' : 'false', docTrack: track(!!(dk && dk.approved)), docKnob: knob(!!(dk && dk.approved)),
@@ -692,7 +916,7 @@ class Component extends DCLogic {
 
     Object.assign(vals, this.colorVals(o, st, pi, pg, ei));
     // Launch
-    const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0);
+    const left = (nP - apP) + (nE - apE) + (dk && !dk.approved ? 1 : 0) + (o.piece && !o.piece.approved ? 1 : 0);
     Object.assign(vals, { isEventOffer: !!O.offerById(o.kind).event, openGraphics: this.openGraphics, gfxNote: st.gfxNote || '', gfxNoteOn: !!st.gfxNote, gfxNoun: O.offerById(o.kind).noun,
       gfxMissing: !o.date || !(o.speakers || []).length ? 'Add the date and speakers on the offer first if you can, so they carry over.' : '', gfxMissingOn: !o.date || !(o.speakers || []).length });
     Object.assign(vals, { espVal: o.esp || 'hubspot', espOptions: O.ESPS.map((x) => ({ id: x.id, name: x.name })), setEsp: (e) => this.update((x) => { x.esp = e.target.value; return x; }),
@@ -704,6 +928,7 @@ class Component extends DCLogic {
           convNeedsReview: !!(o.conversion.review && (R.blockers || []).some((b) => /reviewer|review by/i.test(b))) || !!set.complianceApproved, convReviewed: set.complianceApproved ? 'true' : 'false', convReviewedText: set.complianceApproved ? 'Yes' : 'Not yet',
           toggleConvReviewed: () => this.update((x) => { x.conversion = { ...x.conversion, settings: { ...(x.conversion.settings || {}), complianceApproved: !(x.conversion.settings || {}).complianceApproved } }; return x; }),
           convTitle: (R.blockers || []).length ? 'Landing page review ' + R.score + '/100 · before publishing:' : 'Landing page review ' + R.score + '/100 · nothing is blocking publication.', convBlockers: (R.blockers || []).map((t) => ({ t })), convBg: (R.blockers || []).length ? '#FEF3F2' : '#E8F5EC', convFg: (R.blockers || []).length ? '#7A271A' : '#14532D' }; })(),
+      ...this.launchVals(o, st, ent, isDoc, pops),
       notAllApproved: left > 0 || !o.strategyApproved, approvalNote: !nP && !nE ? 'Create the pages and emails first: click Let CatalystOS Create This.' : left > 0 ? left + ' piece' + (left === 1 ? '' : 's') + ' still need' + (left === 1 ? 's' : '') + ' review. You can still download a draft.' : 'The strategy hasn’t been approved yet.', cantDownload: !nP && !nE, download: this.download,
       schedule: o.emails.map((e, i) => ({ n: i + 1, subject: (e.content && e.content.subject) || e.name, when: e.when, to: e.to, pill: e.approved ? PILL.approved[0] : PILL.review[0], pillStyle: pill(e.approved ? 'approved' : 'review').replace('margin-left:8px;', '') })) });
     return vals;
