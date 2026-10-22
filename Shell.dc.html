@@ -16,15 +16,15 @@
 <div style="font-family: 'Public Sans', sans-serif; color: #FFFFFF;">
 <!-- Bars (Erika, Oct 20): top bar (account + agency right) · navy app bar (title left, client picker right) · light purple bar (Saved Files left). -->
 <div class="cos-brandbar">
-  <div class="cos-brandbar-l"><a href="{{ backHref }}" class="cos-back-sm" title="Back to this client’s dashboard" style="text-decoration: none;"><img src="https://catalystos-dashboard-staging.vercel.app/icons/rocket4.png" alt="">Back to Dashboard</a></div>
-  <div class="cos-brandbar-c"><span class="cos-mark">OS</span><span class="cos-powered">Powered by</span><span class="cos-wordmark">Catalyst<b>OS</b></span></div>
+  <div class="cos-brandbar-l" style="display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;min-width:0;justify-self:start;"><div class="cos-brandbar-c"><span class="cos-mark">OS</span><span class="cos-powered">Powered by</span><span class="cos-wordmark">Catalyst<b>OS</b></span></div><span class="cos-agency-left" style="display:flex;align-items:center;padding-left:14px;border-left:1px solid rgba(255,255,255,0.18);min-width:0;"><span class="cos-agency"><span>Agency</span><strong>{{ agency }}</strong></span></span></div>
+  <div class="cos-brandbar-c"></div>
   <div class="cos-brandbar-r">
     <span data-cos-cost="auto"></span>
     <div class="cos-user">
       <sc-if value="{{ hasEmail }}" hint-placeholder-val="{{ true }}"><span class="cos-user-email" title="{{ email }}">{{ email }}</span></sc-if>
       <button type="button" onClick="{{ onSignOut }}" class="cos-signout"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><path d="M16 17l5-5-5-5"></path><path d="M21 12H9"></path></svg>Sign out</button>
     </div>
-    <sc-if value="{{ hasAgency }}" hint-placeholder-val="{{ true }}"><span class="cos-agency"><span>Agency</span><strong>{{ agency }}</strong></span></sc-if>
+    <sc-if value="{{ hasAgency }}" hint-placeholder-val="{{ true }}"></sc-if>
   </div>
 </div>
 <div class="cos-appbar">
