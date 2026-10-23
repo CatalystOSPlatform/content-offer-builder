@@ -432,7 +432,7 @@ class Component extends DCLogic {
     if (!batch) return list.map((e, k) => ({ what: 'email ' + (at(k) + 1), n: 1, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: at(k), campaign: camp }), put: (x, c) => { if (x.emails[at(k)]) x.emails[at(k)].content = c; } }));
     const per = this.D.EMAILS_PER_REQUEST || 4, out = [];
     for (let a = 0; a < list.length; a += per) { const chunk = list.slice(a, a + per), pos = chunk.map((_, k) => at(a + k));
-      out.push({ what: chunk.length === 1 ? 'email ' + (pos[0] + 1) : 'emails ' + pos.map((x) => x + 1).join(', '), n: chunk.length, go: () => this.D.writeOfferEmails({ offer: o, emails: chunk, startIndex: pos[0], campaign: camp }), put: (x, cs) => { (cs || []).forEach((c, k) => { if (c && x.emails[pos[k]]) x.emails[pos[k]].content = c; }); } }); }
+      out.push({ what: chunk.length === 1 ? 'email ' + (pos[0] + 1) : 'emails ' + pos.map((x) => x + 1).join(', '), n: chunk.length, go: () => this.D.writeOfferEmails({ offer: o, emails: chunk, startIndex: pos[0], indexes: pos, campaign: camp }), put: (x, cs) => { (cs || []).forEach((c, k) => { if (c && x.emails[pos[k]]) x.emails[pos[k]].content = c; }); } }); }
     return out;
   }
   async runTasks(id, tasks, alive, count) {
