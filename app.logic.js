@@ -425,9 +425,19 @@ class Component extends DCLogic {
   // Progress for hands-off runs: time-only words, never what is being made or how much of it (Erika, Oct 18).
   tellProgress(done, all) { try { window.CatalystCreate && window.CatalystCreate.progress && window.CatalystCreate.progress(done * 2 >= all ? 'Almost there…' : 'Working on it…'); } catch (e) {} }
   // Runs tasks [{ go, put }] BUILD_AT_ONCE at a time, each saved as soon as it is done, one save at a time.
+  // The emails as build tasks. batch (savings, ?docOneReview=off to turn off): a few emails per Senior Writer request
+  // (D.writeOfferEmails); otherwise one task per email. Each task counts as its number of emails in the progress.
+  emailTasks(o, list, base, camp, batch, idx = null) {
+    const at = (k) => (idx ? idx[k] : base + k); // each email's place in the offer (kept approved emails are skipped)
+    if (!batch) return list.map((e, k) => ({ what: 'email ' + (at(k) + 1), n: 1, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: at(k), campaign: camp }), put: (x, c) => { if (x.emails[at(k)]) x.emails[at(k)].content = c; } }));
+    const per = this.D.EMAILS_PER_REQUEST || 4, out = [];
+    for (let a = 0; a < list.length; a += per) { const chunk = list.slice(a, a + per), pos = chunk.map((_, k) => at(a + k));
+      out.push({ what: chunk.length === 1 ? 'email ' + (pos[0] + 1) : 'emails ' + pos.map((x) => x + 1).join(', '), n: chunk.length, go: () => this.D.writeOfferEmails({ offer: o, emails: chunk, startIndex: pos[0], campaign: camp }), put: (x, cs) => { (cs || []).forEach((c, k) => { if (c && x.emails[pos[k]]) x.emails[pos[k]].content = c; }); } }); }
+    return out;
+  }
   async runTasks(id, tasks, alive, count) {
     let saves = Promise.resolve(), failed = null, next = 0;
-    const lane = async () => { while (next < tasks.length && !failed && alive()) { const t = tasks[next++]; try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(id, (x) => { t.put(x, out); return x; })); await saves; count.done++; this.tellProgress(count.done, count.all); } catch (e) { failed = failed || e; } } };
+    const lane = async () => { while (next < tasks.length && !failed && alive()) { const t = tasks[next++]; try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(id, (x) => { t.put(x, out); return x; })); await saves; count.done += t.n || 1; this.tellProgress(count.done, count.all); } catch (e) { failed = failed || e; } } };
     await Promise.all(Array.from({ length: Math.min(BUILD_AT_ONCE, tasks.length) }, lane)); await saves;
     if (failed) throw failed;
   }
@@ -447,7 +457,8 @@ class Component extends DCLogic {
     this.tellProgress(0, count.all);
     // 1. the piece and the promotion emails
     const t1 = []; if (doc) t1.push({ go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, d) => { x.doc = { ...d, approved: null }; } });
-    emails0.forEach((e, i) => t1.push({ go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, c) => { if (x.emails[i]) x.emails[i].content = c; } }));
+    const batch = this.D.batchEmailsOn ? await this.D.batchEmailsOn() : false;
+    t1.push(...this.emailTasks(o, emails0, 0, camp, batch));
     await this.runTasks(o.id, t1, alive, count); if (!alive()) throw this.stopped();
     // 2. the landing page and thank-you page from the finished piece
     o = this.state.offers.find((x) => x.id === o.id) || o;
@@ -459,7 +470,7 @@ class Component extends DCLogic {
       const nurture = (conv.conversion.nurture || []).map((e) => ({ key: e.key, name: e.name, when: e.when, to: e.to, goal: e.goal + ' ' + e.rules, why: 'The landing page’s follow-up plan (' + e.role + ').', role: e.role, consent: e.consent, content: null, approved: null }));
       await this.updateOf(o.id, (x) => { x.emails = x.emails.concat(nurture); x.strategy = { ...x.strategy, emails: (x.strategy.emails || []).filter((e) => promo.some((p) => p.key === e.key)).concat(nurture.map(({ content, approved, ...e }) => e)) }; return x; });
       o = this.state.offers.find((x) => x.id === o.id) || o;
-      await this.runTasks(o.id, nurture.map((e, k) => ({ go: () => this.D.writeOfferEmail({ offer: o, email: e, index: base + k, campaign: camp }), put: (x, c) => { if (x.emails[base + k]) x.emails[base + k].content = c; } })), alive, count);
+      await this.runTasks(o.id, this.emailTasks(o, nurture, base, camp, batch), alive, count);
     }
     if (!alive()) throw this.stopped();
   }
@@ -492,13 +503,14 @@ class Component extends DCLogic {
     const tasks = [];
     if (this.isDocKind(o0) && !okP(o0.doc)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
     pages.forEach((p, i) => okP(p) || tasks.push({ what: 'the ' + p.title + ' page', go: () => this.D.writeOfferPage({ offer: o, key: p.key, campaign: camp }), put: (x, sections) => { if (x.pages[i]) x.pages[i].sections = sections; } }));
-    emails.forEach((e, i) => okP(e) || tasks.push({ what: 'email ' + (i + 1) + ' of ' + emails.length, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, content) => { if (x.emails[i]) x.emails[i].content = content; } }));
-    let saves = Promise.resolve(), done = 0, failed = null, next = 0;
-    const tell = () => this.tellProgress(done, tasks.length);
+    const todo = emails.map((e, i) => ({ e, i })).filter((x) => !okP(x.e));
+    tasks.push(...this.emailTasks(o, todo.map((x) => x.e), 0, camp, this.D.batchEmailsOn ? await this.D.batchEmailsOn() : false, todo.map((x) => x.i)));
+    let saves = Promise.resolve(), done = 0, failed = null, next = 0; const units = tasks.reduce((n, t) => n + (t.n || 1), 0);
+    const tell = () => this.tellProgress(done, units);
     const lane = async () => {
       while (next < tasks.length && !failed && alive()) {
         const t = tasks[next++];
-        try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(o.id, (x) => { t.put(x, out); return x; })); await saves; done++; tell(); }
+        try { const out = await t.go(); if (!alive()) return; saves = saves.then(() => this.updateOf(o.id, (x) => { t.put(x, out); return x; })); await saves; done += t.n || 1; tell(); }
         catch (e) { failed = failed || e; }
       }
     };
