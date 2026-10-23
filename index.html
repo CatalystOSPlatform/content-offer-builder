@@ -526,6 +526,17 @@ class Component extends DCLogic {
     } finally { this._saveNow--; }
     if (this._lgP) await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
   }
+  // Approvals reach Brand Command when the offer is saved (You Run It, Erika, Oct 23), like the Email Builder: an approval
+  // switched on and off again before saving is never recorded. Hands-off runs and Save buttons record at once.
+  recApproval(slot, label, value) {
+    if (COS_AUTO || this._saveNow) return this.D.recordApproval(slot, label, value);
+    (this._apQ = this._apQ || {})[slot] = { id: this.state.offerId, label, value };
+  }
+  flushApprovals(saved) {
+    const q = this._apQ || {}; Object.keys(q).forEach((slot) => { const it = q[slot]; if (!saved || it.id !== saved.id) return; delete q[slot];
+      const o = saved, ok = slot === 'strategy' ? o.strategyApproved : slot === 'doc' ? o.doc && o.doc.approved : /^page:/.test(slot) ? (o.pages || []).some((p) => 'page:' + p.key === slot && p.approved) : /^email:/.test(slot) ? (o.emails || []).some((e) => 'email:' + e.key === slot && e.approved) : true;
+      if (ok) this.D.recordApproval(slot, it.label, it.value); });
+  }
   // A Save button: what fn changes is saved now (You Run It saves only on a Save button).
   saving(fn) { this._saveNow = (this._saveNow || 0) + 1; try { return fn(); } finally { this._saveNow--; } }
   // ---- the offer catalog (lib/offer-catalog.js) ----
@@ -578,7 +589,7 @@ class Component extends DCLogic {
     if (dead()) return o;
     if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
-    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); if (this._lgFail && this._lgFail.id === s2.id) this._lgFail = null; if (this._unsaved) this._unsaved.delete(s2.id); (this._known = this._known || new Set()).add(s2.id); if (this.D.indexCatchUp) this.D.indexCatchUp(); this.thumbLater(s2); return s2; } catch (e) { this._lgFail = o; this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); if (this._lgFail && this._lgFail.id === s2.id) this._lgFail = null; if (this._unsaved) this._unsaved.delete(s2.id); this.flushApprovals(s2); (this._known = this._known || new Set()).add(s2.id); if (this.D.indexCatchUp) this.D.indexCatchUp(); this.thumbLater(s2); return s2; } catch (e) { this._lgFail = o; this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
   }
   // Saved Files thumbnail: the offer's first landing page, drawn a few seconds after the last save (again only when it changed).
   thumbLater(o) {
@@ -1264,7 +1275,7 @@ class Component extends DCLogic {
       funOfferTitle: isDoc ? (dk && dk.title) || o.name : pc ? pc.title || e.label : '', funOfferMeta: isDoc ? 'Written here · ' + ((dk && dk.sections) || []).length + ' sections' : pc ? 'In Saved Files · ' + B.label : '',
       funThumb: pc && pc.thumb ? pc.thumb : '', funHasThumb: !!(pc && pc.thumb && !isDoc), funOpen: pc && pc.openUrl ? pc.openUrl : '', funHasOpen: !!(pc && pc.openUrl && !isDoc),
       funApprovedAria: have && have.approved ? 'true' : 'false', funTrack: track(!!(have && have.approved)), funKnob: knob(!!(have && have.approved)),
-      funToggle: () => { if (isDoc) { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.D.recordApproval('doc', e.label + ' · ' + (x.name || ''), x.doc); return x; }); } else this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }); },
+      funToggle: () => { if (isDoc) { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.recApproval('doc', e.label + ' · ' + (x.name || ''), x.doc); return x; }); } else this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }); },
       funGoPiece: go('doc'), funGoPages: go('pages'), funGoEmails: go('emails'), funGoPopups: go('popups'), funGoLaunch: go('launch'), funPieceLabel: e.label,
       funNoOfferText: e.ready === false ? 'The ' + e.noun + ' is an interactive tool, coming in the next phase. You can still build its funnel.' : 'The ' + e.noun + ' isn’t made yet. Make it on its tab first; the landing page is written from it.',
       funPages: o.pages.map((p) => ({ title: p.title, status: p.approved ? '✓ Approved' : p.sections.length ? 'Needs review' : 'Not written yet', style: p.approved ? 'color:#14663A;' : 'color:#4A5168;' })), funNoPages: !o.pages.length,
@@ -1380,7 +1391,7 @@ class Component extends DCLogic {
     const D = (label, x, extra) => ({ label, text: (x && x.text) || '—', extra: extra || '', why: (x && x.why) || '—', source: (x && x.source) || '' });
     Object.assign(vals, { stratPill: o.strategyApproved ? PILL.approved[0] : PILL.review[0], stratPillStyle: pill(o.strategyApproved ? 'approved' : 'review').replace('margin-left:8px;', ''), stratBy: o.strategyApproved ? 'Approved by ' + (o.strategyApproved.by || 'you') + ' · ' + new Date(o.strategyApproved.at).toLocaleString('en-US') : 'Planned ' + (s.at ? new Date(s.at).toLocaleString('en-US') : ''),
       stratApprovedAria: o.strategyApproved ? 'true' : 'false', stratTrack: track(!!o.strategyApproved), stratKnob: knob(!!o.strategyApproved),
-      toggleStrat: () => this.update((x) => { x.strategyApproved = this.approval(!x.strategyApproved); if (x.strategyApproved) this.D.recordApproval('strategy', 'Content offer strategy · ' + (x.name || ''), x.strategy); return x; }),
+      toggleStrat: () => this.update((x) => { x.strategyApproved = this.approval(!x.strategyApproved); if (x.strategyApproved) this.recApproval('strategy', 'Content offer strategy · ' + (x.name || ''), x.strategy); return x; }),
       sTitle: s.title || o.name, sSummary: s.summary || '', hasTitleOptions: !!(s.titleOptions || []).length, titleOptions: (s.titleOptions || []).map((t) => ({ label: t, pick: () => this.update((x) => { const old = x.strategy.title; x.strategy.title = t; x.strategy.titleOptions = x.strategy.titleOptions.filter((y) => y !== t).concat(old ? [old] : []); x.name = t; x.strategyApproved = null; return x; }) })),
       decisions: [D('Objective', s.objective), D('Audience', s.audience, s.audience && s.audience.pain ? 'Their pain: “' + s.audience.pain + '”' : ''), D('Angle', s.angle)],
       kindNoun: O.offerById(o.kind).noun, sFit: s.fit || '', promise: (s.promise || []).map((t) => ({ text: t })),
@@ -1397,7 +1408,7 @@ class Component extends DCLogic {
       docSrc: tab === 'doc' && dk ? this._docCache.html : '', docFrameTitle: 'The ' + dNoun + ', page by page (click any text to edit it)',
       docInfo: dk ? (st.docPages ? st.docPages + ' pages · ' : '') + (dk.sections || []).length + ' sections' + (dk.approved ? ' · Approved by ' + (dk.approved.by || 'you') : dk.by === 'person' ? ' · Edited by you' : ' · Written by CatalystOS') : '',
       docApprovedAria: dk && dk.approved ? 'true' : 'false', docTrack: track(!!(dk && dk.approved)), docKnob: knob(!!(dk && dk.approved)),
-      toggleDoc: () => { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.D.recordApproval('doc', O.offerById(x.kind).label + ' · ' + (x.name || ''), x.doc); return x; }); },
+      toggleDoc: () => { if (!dk) return; this.update((x) => { x.doc.approved = this.approval(!x.doc.approved); if (x.doc.approved) this.recApproval('doc', O.offerById(x.kind).label + ' · ' + (x.name || ''), x.doc); return x; }); },
       docPdf: this.docPdf, docPdfLabel: st.docPdfBusy ? 'Making the PDF…' : 'Download PDF', docPdfBusy: !!st.docPdfBusy || !dk,
       docNoteVal: st.docNote || '', setDocNote: (e) => this.setState({ docNote: e.target.value }) });
 
@@ -1414,7 +1425,7 @@ class Component extends DCLogic {
       lapBtn: 'height:30px;padding:0 14px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (st.dev !== 'phone' ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;'),
       phBtn: 'height:30px;padding:0 14px;border-radius:8px;font:800 12.5px Manrope,sans-serif;cursor:pointer;' + (st.dev === 'phone' ? 'background:#081A53;color:#FFFFFF;border:1px solid #081A53;' : 'background:#FFFFFF;color:#081A53;border:1px solid #C9CDD8;'),
       pageApprovedAria: pg && pg.approved ? 'true' : 'false', pageTrack: track(!!(pg && pg.approved)), pageKnob: knob(!!(pg && pg.approved)),
-      togglePage: () => this.update((x) => { const p = x.pages[pi]; p.approved = this.approval(!p.approved); if (p.approved) this.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (x.name || ''), { sections: p.sections }); return x; }),
+      togglePage: () => this.update((x) => { const p = x.pages[pi]; p.approved = this.approval(!p.approved); if (p.approved) this.recApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (x.name || ''), { sections: p.sections }); return x; }),
       hasField: !!st.field, fieldLabel: st.field ? st.field.label : '', fieldVal: st.field ? st.field.val : '', setFieldVal: (e) => this.setState({ field: { ...st.field, val: e.target.value } }), saveField: this.saveField, cancelField: () => this.setState({ field: null }),
       pageFrameTitle: 'Preview of the ' + (pg ? pg.title : '') + ' page', pageDoc: pg && pg.sections.length ? this.renderOfferPage(o, pi, b, { preview: true, controls: true }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this page…' : 'Not written yet.') + '</p></body></html>' });
 
@@ -1428,7 +1439,7 @@ class Component extends DCLogic {
           style: 'flex:none;display:flex;flex-direction:column;gap:8px;width:204px;padding:12px;border-radius:12px;cursor:pointer;' + (i === ei ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; }),
       emName: em ? (ei + 1) + '. ' + em.name + ' · ' + em.when + ' · to ' + em.to : '', emGoal: em ? em.goal : '',
       emApprovedAria: em && em.approved ? 'true' : 'false', emTrack: track(!!(em && em.approved)), emKnob: knob(!!(em && em.approved)),
-      toggleEmail: () => { if (!em || !em.content) return; this.update((x) => { const e = x.emails[ei]; e.approved = this.approval(!e.approved); if (e.approved) this.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (x.name || ''), e.content); return x; }); },
+      toggleEmail: () => { if (!em || !em.content) return; this.update((x) => { const e = x.emails[ei]; e.approved = this.approval(!e.approved); if (e.approved) this.recApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (x.name || ''), e.content); return x; }); },
       emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), wf: 'em-' + k, ph: WF_PH[k] || '', set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
       saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }),
       emSubject: fv('subject'), emPre: fv('preheader'), emFrameTitle: 'Preview of the ' + (em ? em.name : '') + ' email',
