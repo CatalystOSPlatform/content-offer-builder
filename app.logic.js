@@ -28,6 +28,10 @@ const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 
 
 // How many parts of an offer (the document, each landing page, each email) are written at the same time.
 const BUILD_AT_ONCE = 3;
+// Write First (Erika, Oct 23): opened directly (You Run It) nothing is written until the person asks and nothing is saved until a
+// Save button (or Save and Leave); hands-off runs (?cos_auto=1) keep saving as they work.
+const COS_AUTO = (() => { try { return new URLSearchParams(location.search).get('cos_auto') === '1'; } catch (e) { return false; } })();
+const WF_PH = { subject: 'Write your subject line', preheader: 'Write the preview text', eyebrow: 'Write a short eyebrow', headline: 'Write your headline', body: 'Write the email body', bullets: 'Write bullet points, one per line', cta: 'Write the button text', ctaUrl: 'Paste the button link (blank uses the landing page)', ps: 'Write a P.S. (optional)' };
 const FORM0 = { offerType: null, answers: {}, kind: 'whitepaper', camp: undefined, title: '', topic: '', date: '', time: '', where: '', people: '', speakers: [], videoUrl: '', tpl: 'editorial', story: '', research: '' };
 class Component extends DCLogic {
   state = { boot: 'loading', bootMsg: 'Connecting to Brand Command…', info: {}, offers: [], offerId: null, view: 'new',
@@ -35,7 +39,7 @@ class Component extends DCLogic {
     camps: [], busy: false, pickQ: '', sfList: {}, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister();
+    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister(); this.wfRegister();
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
       if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
@@ -43,19 +47,15 @@ class Component extends DCLogic {
     window.addEventListener('message', this._onMsg);
   }
   componentWillUnmount() { window.removeEventListener('message', this._onMsg); }
-  // Ask before leaving unsaved work (Erika, Oct 22). Every change saves the offer right away, so unsaved = a save still
-  // under way or one that failed, or an edit typed but not saved yet (a text field or an email's fields).
+  // Ask before leaving unsaved work (Erika, Oct 22). Unsaved = a change not saved yet (You Run It: every change waits for a Save
+  // button), a save still under way or one that failed, or an edit typed but not applied yet (a text field or an email's fields).
   leaveGuard(n) {
     if (!window.CosLeaveGuard) { if (n < 20) setTimeout(() => this.leaveGuard(n + 1), 500); return; }
     if (!this._lgP) { this._lgP = new Set(); const p0 = this.persist; this.persist = (o) => { const p = p0.call(this, o); this._lgP.add(p); const done = () => this._lgP.delete(p); p.then(done, done); return p; }; }
     const fieldEdited = () => { const f = this.state.field; return !!f && f.val !== f.orig; };
     window.CosLeaveGuard.register({ label: 'content offer',
-      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft || !!this.state.popDraft,
-      save: async () => {
-        if (fieldEdited()) this.saveField(); if (this.state.emDraft) this.saveEmail(); const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
-        const f = this._lgFail; if (f) this.persist(this.state.offers.find((x) => x.id === f.id) || f);
-        await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
-      } });
+      isDirty: () => this._lgP.size > 0 || !!this._lgFail || fieldEdited() || !!this.state.emDraft || !!this.state.popDraft || !!(this._unsaved && this._unsaved.size),
+      save: async () => { const f = this._lgFail; if (f) (this._unsaved = this._unsaved || new Set()).add(f.id); await this.flushSave(); } });
   }
   // The Saved Files bar under the client picker; follows the client when it changes.
   componentDidUpdate() { this.mountSaved(); }
@@ -79,6 +79,7 @@ class Component extends DCLogic {
   }
   async useInfo(info) {
     const [offers, camps, curCamp] = await Promise.all([this.D.listOffers().catch(() => []), this.D.campaigns().catch(() => []), this.D.currentCampaign().catch(() => '')]);   // Current campaign (Erika, Oct 22)
+    this._known = new Set(offers.map((x) => x.id)); this._unsaved = new Set();   // what this client has saved; nothing unsaved yet
     const want = new URLSearchParams(location.search).get('offer'), has = want && offers.find((o) => o.id === want);
     this.setState({ boot: 'ready', info, offers, camps, curCamp, offerId: has ? want : null, view: has ? 'offer' : 'new', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null });
     this.shell(info);
@@ -104,11 +105,18 @@ class Component extends DCLogic {
   }
   // Save now (task bar Save, the leave guard): any typed edit, then every save still under way.
   async flushSave() {
-    const f = this.state.field; if (f && f.val !== f.orig) this.saveField(); if (this.state.emDraft) this.saveEmail();
-    const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
-    const o = this.offer(); if (o) await this.persist(o);
+    this._saveNow = (this._saveNow || 0) + 1;
+    try {
+      const f = this.state.field; if (f && f.val !== f.orig) this.saveField(); if (this.state.emDraft) this.saveEmail();
+      const pd = this.state.popDraft; if (pd && pd.id === this.state.offerId) { this.editPopup(pd.i, pd.v); this.setState({ popDraft: null }); }
+      await new Promise((r) => this.setState({}, r));
+      const o = this.offer(); if (o) await this.persist(o);
+      for (const id of [...(this._unsaved || [])]) { const x = this.state.offers.find((y) => y.id === id); if (x) await this.persist(x); else this._unsaved.delete(id); }   // every offer changed here
+    } finally { this._saveNow--; }
     if (this._lgP) await Promise.all([...this._lgP]); if (this._lgFail) throw new Error('the offer could not be saved');
   }
+  // A Save button: what fn changes is saved now (You Run It saves only on a Save button).
+  saving(fn) { this._saveNow = (this._saveNow || 0) + 1; try { return fn(); } finally { this._saveNow--; } }
   // ---- the offer catalog (lib/offer-catalog.js) ----
   entryOf(o) { return this.CAT.catalogOf(o); }
   formEntry() { return this.state.form.offerType ? this.CAT.byId(this.state.form.offerType) : null; }
@@ -146,12 +154,20 @@ class Component extends DCLogic {
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
   // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
   formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
-  async persist(o) {
+  // You Run It (Erika, Oct 23): a change stays on screen as unsaved until a Save button (saving(), flushSave) saves it.
+  persist(o) {
+    if (COS_AUTO || this._saveNow) return this.persistNow(o);
+    if (this._ccDead && this._ccDead[o.id]) return Promise.resolve(o);
+    this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: '' }));
+    (this._unsaved = this._unsaved || new Set()).add(o.id);
+    return Promise.resolve(o);
+  }
+  async persistNow(o) {
     const dead = () => !!(this._ccDead && this._ccDead[o.id]);   // an offer "Let CatalystOS Create This" made and then undid
     if (dead()) return o;
     if (o && o.conversion && this.CV) { try { o = { ...o, conversion: { ...o.conversion, review: this.CV.scorecard(this.convSite(o), this.D.siteBrand()) } }; } catch (e) { console.warn('conversion review', e); } }
     this.setState((st) => ({ offers: st.offers.some((x) => x.id === o.id) ? st.offers.map((x) => (x.id === o.id ? o : x)) : [o].concat(st.offers), saved: 'Saving…' }));
-    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); if (this._lgFail && this._lgFail.id === s2.id) this._lgFail = null; this.thumbLater(s2); return s2; } catch (e) { this._lgFail = o; this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
+    try { const s2 = await this.D.saveOffer(o); if (dead()) { this.D.deleteOffer(o.id).catch(() => {}); this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== o.id) })); return s2; } this.setState((st) => ({ offers: st.offers.map((x) => (x.id === s2.id ? s2 : x)), saved: '✓ Saved' })); if (this._lgFail && this._lgFail.id === s2.id) this._lgFail = null; if (this._unsaved) this._unsaved.delete(s2.id); (this._known = this._known || new Set()).add(s2.id); if (this.D.indexCatchUp) this.D.indexCatchUp(); this.thumbLater(s2); return s2; } catch (e) { this._lgFail = o; this.setState({ saved: '', err: 'Could not save: ' + (e && e.message || e) }); return o; }
   }
   // Saved Files thumbnail: the offer's first landing page, drawn a few seconds after the last save (again only when it changed).
   thumbLater(o) {
@@ -239,7 +255,8 @@ class Component extends DCLogic {
   }
   // Deletes an offer (its saved copy and Saved Files entry); the builder goes back to "new" if it was open.
   async deleteOfferNow(id) {
-    try { await this.D.deleteOffer(id); } catch (e) {}
+    if (this._unsaved) this._unsaved.delete(id);
+    if (COS_AUTO || !this._known || this._known.has(id)) { try { await this.D.deleteOffer(id); } catch (e) {} }   // one never saved has nothing to delete
     this.setState((st) => ({ offers: st.offers.filter((x) => x.id !== id), ...(st.offerId === id ? { offerId: null, view: 'new' } : {}), delAsk: false }));
   }
   // Saved Files window buttons for this app's offers (any offer of the open client — never another client's).
@@ -257,15 +274,15 @@ class Component extends DCLogic {
       // The whole offer: the strategy and every landing page and email (each approval recorded in Brand Command, as the switches here do).
       async approve(ref, on, rec) { const o = await self.sfOffer(ref, rec); if (!o) return; const a = self.approval(!!on);
         o.strategyApproved = a; if (o.doc) o.doc.approved = a; if (o.piece) o.piece.approved = a; if (o.popups) o.popups.approved = a; (o.pages || []).forEach((p) => { p.approved = a; }); (o.emails || []).forEach((e) => { e.approved = a; });
-        await self.persist(o);
+        await self.saving(() => self.persist(o));
         if (on) { self.D.recordApproval('strategy', 'Content offer strategy · ' + (o.name || ''), o.strategy); if (o.doc) self.D.recordApproval('doc', self.O.offerById(o.kind).label + ' · ' + (o.name || ''), o.doc); (o.pages || []).forEach((p) => self.D.recordApproval('page:' + p.key, 'Landing page · ' + p.title + ' · ' + (o.name || ''), { sections: p.sections })); (o.emails || []).filter((e) => e.content).forEach((e) => self.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (o.name || ''), e.content)); } },
       // An offer is for one Brand Command campaign: the one newly picked (or none).
       async campaigns(ref, ids, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
         const ok = (ids || []).filter(Boolean); const id = ok.find((x) => x !== o.campaignId) || (ok.indexOf(o.campaignId) >= 0 ? o.campaignId : null); const c = id ? self.campaign(id) : null;
-        o.campaignId = id || null; o.campaignName = c ? c.name : (id ? o.campaignName || '' : ''); await self.persist(o); },
+        o.campaignId = id || null; o.campaignName = c ? c.name : (id ? o.campaignName || '' : ''); await self.saving(() => self.persist(o)); },
       async duplicate(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (!o) return;
         const copy = { ...o, id: 'o' + Date.now(), name: (o.name || o.title || 'Content offer') + ' copy', strategyApproved: null, ...(o.doc ? { doc: { ...o.doc, approved: null } } : {}), pages: (o.pages || []).map((p) => ({ ...p, approved: null })), emails: (o.emails || []).map((e) => ({ ...e, approved: null })), createdAt: Date.now() };
-        await self.persist(copy); return copy.id; },
+        await self.saving(() => self.persist(copy)); return copy.id; },
       async remove(ref, _, rec) { const o = await self.sfOffer(ref, rec); if (o) await self.deleteOfferNow(ref); },
     };
   }
@@ -317,7 +334,7 @@ class Component extends DCLogic {
   startManual = async () => {
     const f = this.state.form, e = this.formEntry(); if (!e || this.state.busy) return;
     const campId = this.formCampId(), camp = this.campaign(campId);
-    const o = await this.persist({ id: 'o' + Date.now(), v: 2, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() });
+    const o = await this.saving(() => this.persist({ id: 'o' + Date.now(), v: 2, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() }));
     this.setState({ offerId: o.id, view: 'offer', tab: 'doc', note: '', form: { ...FORM0 } });
   };
 
@@ -447,18 +464,19 @@ class Component extends DCLogic {
     if (o0.conv && this.CV) return this.buildConversionFunnel(alive);
     const st = o0.strategy || {}, b = this.D.siteBrand(), camp = this.campaign(o0.campaignId);
     const opts = this.P.designOptions('offer', b.industry, 6, b.aesthetic), k = Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(o0.kind)), d0 = (o0.design && opts.find((x) => x.id === o0.design.option)) || opts[k] || opts[0];
-    const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; return { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
-    const emails = (st.emails || []).map((e) => ({ ...e, content: null, approved: null }));
-    const o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) ? { doc: null } : {}) });
+    const keepAp = !!this._ccKeepAp, okP = (x) => !!(keepAp && x && x.approved);   // Keep Approved Parts: approved pages, emails and the document stay as they are
+    const used = {}; const pages = (st.pages || []).map((p, i) => { const P = this.K.PAGES[p.key]; let slug = i === 0 ? 'index' : P.slug; while (used[slug]) slug += '-2'; used[slug] = 1; const old = (o0.pages || []).find((x) => x.key === p.key); return okP(old) ? { ...old, slug } : { key: p.key, title: i === 0 ? 'Home' : P.title, slug, sections: [], approved: null }; });
+    const emails = (st.emails || []).map((e) => { const old = (o0.emails || []).find((x) => x.key === e.key); return okP(old) ? old : { ...e, content: null, approved: null }; });
+    const o = await this.persist({ ...o0, design: { style: d0.style, lay: d0.lay, solid: d0.solid || {}, motion: 1, option: d0.id }, pages, emails, ...(this.isDocKind(o0) && !okP(o0.doc) ? { doc: null } : {}) });
     if (this.isDocKind(o0)) { if (this.state.tab === 'strategy') this.setState({ tab: 'doc', pageIdx: 0, emailIdx: 0 }); }
     else if (this.state.tab === 'strategy') this.setState({ tab: 'pages', pageIdx: 0, emailIdx: 0 });
     // The document, each landing page and each email only need the strategy, so they are written at the same time
     // (BUILD_AT_ONCE at a time; each one still gets the Senior Writer's full checks). Each is saved as soon as it is
     // done, one save at a time, so no save overwrites another. Run one after the other, a guide took about 17 minutes.
     const tasks = [];
-    if (this.isDocKind(o0)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
-    pages.forEach((p, i) => tasks.push({ what: 'the ' + p.title + ' page', go: () => this.D.writeOfferPage({ offer: o, key: p.key, campaign: camp }), put: (x, sections) => { if (x.pages[i]) x.pages[i].sections = sections; } }));
-    emails.forEach((e, i) => tasks.push({ what: 'email ' + (i + 1) + ' of ' + emails.length, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, content) => { if (x.emails[i]) x.emails[i].content = content; } }));
+    if (this.isDocKind(o0) && !okP(o0.doc)) tasks.push({ what: 'the ' + this.O.offerById(o0.kind).noun, go: () => this.D.writeOfferDocBest({ offer: o, campaign: camp }), put: (x, doc) => { x.doc = { ...doc, approved: null }; } });
+    pages.forEach((p, i) => okP(p) || tasks.push({ what: 'the ' + p.title + ' page', go: () => this.D.writeOfferPage({ offer: o, key: p.key, campaign: camp }), put: (x, sections) => { if (x.pages[i]) x.pages[i].sections = sections; } }));
+    emails.forEach((e, i) => okP(e) || tasks.push({ what: 'email ' + (i + 1) + ' of ' + emails.length, go: () => this.D.writeOfferEmail({ offer: o, email: e, index: i, campaign: camp }), put: (x, content) => { if (x.emails[i]) x.emails[i].content = content; } }));
     let saves = Promise.resolve(), done = 0, failed = null, next = 0;
     const tell = () => this.tellProgress(done, tasks.length);
     const lane = async () => {
@@ -505,6 +523,21 @@ class Component extends DCLogic {
   // What "Let CatalystOS Create This" works on, read from what is open (never asked):
   // the start screen → a whole new offer; Landing pages → the open page; Emails → the open email; Strategy or Launch → every page and email
   // (after revising the strategy if the person wrote changes).
+  // ---- Write First (Erika, Oct 23): each copy field has a write-first prompt and a CatalystOS Write button (pilot-dash
+  // cos-write-field.js) that writes only that field (lib/data.js writeOfferField). The field's own handler applies the text, so it
+  // waits for that field's Save button like any edit.
+  wfRegister() { if (COS_AUTO) return; (window.CosWriteFieldReady = window.CosWriteFieldReady || []).push((W) => W.watch(() => this.wfFields())); }
+  wfFields() {
+    const st = this.state, out = []; if (st.boot !== 'ready' || !this.D || st.busy) return out;
+    const q = (k) => document.querySelector('[data-wf="' + k + '"]'), o = this.offer(), camp = o ? this.campaign(o.campaignId) : null;
+    const ask = (el, label, what, context) => out.push({ el, label, write: () => this.D.writeOfferField({ offer: o || this.state.form, campaign: camp || this.campaign(this.formCampId()), what, context, current: el.value }) });
+    const pf = q('page-field'); if (pf && o && st.field) { const pg = o.pages[st.pageIdx], sec = pg && pg.sections[st.field.si]; ask(pf, st.field.label, 'the “' + st.field.label + '” text on the ' + (pg ? pg.title : '') + ' landing page', sec ? JSON.stringify(sec.content) : ''); }
+    if (o) { const em = this.emCur(); EM_FIELDS.forEach(([k, label]) => { const el = q('em-' + k); if (el && k !== 'ctaUrl') ask(el, label, 'the ' + label.replace(/ \(.*\)$/, '').toLowerCase() + ' of the email “' + ((em && em.name) || '') + '”', JSON.stringify({ ...((em && em.content) || {}), ...(st.emDraft || {}) })); }); }
+    if (st.seqEdit) { const se = st.seqEdit; EM_FIELDS.forEach(([k, label]) => { const el = q('seq-' + k); if (el && k !== 'ctaUrl') ask(el, label, 'the ' + label.replace(/ \(.*\)$/, '').toLowerCase() + ' of email ' + (se.i + 1) + ' in the sequence, “' + (se.plan.name || '') + '” (' + (se.plan.goal || '') + ')', JSON.stringify(se.copy || {})); }); }
+    const L = (this.PK && this.PK.LIMITS) || {};
+    [['pop-headline', 'Popup headline', 'the popup’s headline (at most ' + (L.headline || 80) + ' characters)'], ['pop-body', 'Popup text', 'the popup’s text (at most ' + (L.body || 220) + ' characters)'], ['pop-button', 'Popup button', 'the popup’s button text (at most 32 characters, Title Case)']].forEach(([k, label, what]) => { const el = q(k); if (el && o) ask(el, label, what, ''); });
+    return out;
+  }
   ccTarget() {
     const st = this.state, o = this.offer();
     if (st.view !== 'offer' || !o) return this.formEntry() ? { what: 'new' } : { what: 'none' };
@@ -516,6 +549,12 @@ class Component extends DCLogic {
     if (st.tab === 'emails' && o.emails.length) return { what: 'email', i: Math.min(st.emailIdx, o.emails.length - 1) };
     return { what: 'offer' };
   }
+  // What the orange button would replace: text the person wrote (by: 'person', edited in place) and approved parts.
+  ccParts(t) { const o = this.offer(); if (!o) return []; if (t.what === 'doc') return o.doc ? [o.doc] : []; if (t.what === 'page') return [o.pages[t.i]].filter(Boolean); if (t.what === 'email') return [o.emails[t.i]].filter(Boolean); if (t.what === 'popups') return o.popups ? [o.popups] : [];
+    if (t.what === 'offer') return [].concat(o.doc ? [o.doc] : [], o.pages || [], o.emails || []); return []; }
+  ccMine(x) { return !!x && (x.by === 'person' || (Array.isArray(x.sections) && x.sections.some((s) => s && s.by === 'person'))); }
+  ccIsApproved(t) { const ps = this.ccParts(t); return ps.length > 0 && ps.every((x) => x && x.approved); }
+  ccAsk() { const t = this.ccTarget(); const ps = this.ccParts(t); return { personText: ps.some((x) => !x.approved && this.ccMine(x)), approved: ps.filter((x) => x && x.approved).length }; }
   ccNotes() {
     const o = this.offer(); if (!o) return [];
     const notes = ((o.strategy || {}).assumptions || []).map((t) => 'Confirm: ' + t);
@@ -554,20 +593,25 @@ class Component extends DCLogic {
           if (x.offer) this.persist(x.offer);
           this.setState({ busy: false, err: '', view: x.view, offerId: x.offerId, tab: x.tab, pageIdx: x.pageIdx, emailIdx: x.emailIdx, note: x.note || '', emNote: x.emNote || '', emDraft: null, field: null, delAsk: false });
         },
-        run: async () => {
+        // You Run It (Erika, Oct 23): ask before replacing text the person wrote or approved parts.
+        confirmRun: () => this.ccAsk(),
+        keepApproved: true,
+        run: async (_m, _s, opts) => {
+          const keepAp = !!(opts && opts.replaceApproved === false); this._ccKeepAp = keepAp;
           const gen = this._ccGen = (this._ccGen || 0) + 1, alive = () => gen === this._ccGen;
           const t = this.ccTarget(); this.setState({ busy: true, err: '', field: null, delAsk: false });
           try {
             if (t.what === 'new') { const o1 = await this.planNew(alive); if (this.funnelRightAway(o1)) await this.buildOffer(alive); }
             else if (t.what === 'piece') await this.makePiece(alive);
             else if (t.what === 'popups') await this.writePopups(alive);
+            else if (keepAp && this.ccIsApproved(t)) return { notes: ['This part is approved, so it was kept as it is.'] };
             else if (t.what === 'doc') await this.rewriteDoc(alive);
             else if (t.what === 'page') await this.rewritePage(t.i, alive);
             else if (t.what === 'email') await this.rewriteEmailAt(t.i, alive);
             else { const note = this.state.tab === 'strategy' ? this.state.note.trim() : ''; if (note || !(this.offer() || {}).strategy) await this.replanOffer(note, alive); await this.buildOffer(alive); }
             if (!alive()) throw this.stopped();
             return { notes: this.ccNotes() };
-          } finally { if (alive()) this.setState({ busy: false }); }
+          } finally { this._ccKeepAp = false; if (alive()) this.setState({ busy: false }); }
         },
         // Hands-off runs (the runner opens this app with ?cos_auto=1&client=…&campaign=…&kind=content-offer&title=…&brief=…).
         // A content funnel is the same build seen from the funnel side: the offer, its landing pages and its email sequence.
@@ -632,11 +676,11 @@ class Component extends DCLogic {
     const fp = rest.join('.'), v = getPath(sec.content, fp);
     this.setState({ field: { si: +si, path: fp, val: v == null ? '' : String(v), orig: v == null ? '' : String(v), label: ((this.K.SECTIONS[sec.kind] || {}).label || sec.kind) + ' · ' + fp.replace(/^items\.(\d+)\./, (m, n) => 'item ' + (+n + 1) + ' ').replace(/\./g, ' ') } });
   }
-  saveField = () => { const fd = this.state.field; if (!fd) return; const pi = this.state.pageIdx; this.update((o) => { const sec = o.pages[pi].sections[fd.si]; sec.content = setPath(sec.content, fd.path, fd.val); sec.by = 'person'; o.pages[pi].approved = null; return o; }); this.setState({ field: null }); };
+  saveField = () => { const fd = this.state.field; if (!fd) return; const pi = this.state.pageIdx; this.saving(() => this.update((o) => { const sec = o.pages[pi].sections[fd.si]; sec.content = setPath(sec.content, fd.path, fd.val); sec.by = 'person'; o.pages[pi].approved = null; return o; })); this.setState({ field: null }); };
 
   // Emails: edit the fields, rewrite with a note, approve.
   emCur() { const o = this.offer(); return o && o.emails[Math.min(this.state.emailIdx, o.emails.length - 1)]; }
-  saveEmail = () => { const d = this.state.emDraft; if (!d) return; const i = this.state.emailIdx; this.update((o) => { o.emails[i].content = { ...(o.emails[i].content || {}), ...d, bullets: String(d.bullets != null ? d.bullets : (o.emails[i].content.bullets || []).join('\n')).split('\n').map((x) => x.trim()).filter(Boolean) }; o.emails[i].by = 'person'; o.emails[i].approved = null; return o; }); this.setState({ emDraft: null }); };
+  saveEmail = () => { const d = this.state.emDraft; if (!d) return; const i = this.state.emailIdx; this.saving(() => this.update((o) => { o.emails[i].content = { ...(o.emails[i].content || {}), ...d, bullets: String(d.bullets != null ? d.bullets : (o.emails[i].content.bullets || []).join('\n')).split('\n').map((x) => x.trim()).filter(Boolean) }; o.emails[i].by = 'person'; o.emails[i].approved = null; return o; })); this.setState({ emDraft: null }); };
   approval(on) { return on ? { by: this.D.userEmail(), at: Date.now() } : null; }
 
   // Sample landing pages for the start screen: the client's brand, the offer's design, Brand Command facts only (no AI yet).
@@ -835,7 +879,7 @@ class Component extends DCLogic {
       popHeadline: p ? p.headline : '', setPopHeadline: setD('headline'), popHeadCount: p ? String(p.headline).length + ' / ' + this.PK.LIMITS.headline : '',
       popBody: p ? p.body : '', setPopBody: setD('body'), popBodyCount: p ? String(p.body).length + ' / ' + this.PK.LIMITS.body : '',
       popButton: p ? p.button : '', setPopButton: setD('button'), popFreq: p ? String(p.frequencyDays) : '7', setPopFreq: setD('frequencyDays'),
-      popDirty: !!dr, popClean: !dr, savePopup: () => { if (!dr) return; this.editPopup(i, dr.v); this.setState({ popDraft: null }); }, cancelPopup: () => this.setState({ popDraft: null }),
+      popDirty: !!dr, popClean: !dr, savePopup: () => { if (!dr) return; this.saving(() => this.editPopup(i, dr.v)); this.setState({ popDraft: null }); }, cancelPopup: () => this.setState({ popDraft: null }),
       popClaims: bad.length ? 'Check before saving: “' + bad.join('”, “') + '” isn’t in the offer’s own material. Popups never claim numbers the offer doesn’t support.' : '', popHasClaims: !!bad.length,
       popRemove: () => { if (st.popDel !== i) return this.setState({ popDel: i }); this.removePopup(i); }, popRemoveLabel: st.popDel === i ? 'Click Again to Delete' : 'Delete Popup',
       popApprovedAria: o.popups && o.popups.approved ? 'true' : 'false', popTrack: track(!!(o.popups && o.popups.approved)), popKnob: knob(!!(o.popups && o.popups.approved)),
@@ -902,7 +946,7 @@ class Component extends DCLogic {
       const cp = se.copy || {};
       Object.assign(vals, { hasSeqEdit: true, seqTitle: 'Email ' + (se.i + 1) + ': ' + (se.plan.name || ''), closeSeq: () => this.setState({ seqEdit: null }), stopZoom: (e) => e.stopPropagation(),
         seqPlan: [['name', 'Email name'], ['when', 'When it goes out'], ['to', 'Who gets it'], ['goal', 'Its job']].map(([k, label]) => ({ label, value: se.plan[k] || '', set: upd('plan', k) })),
-        seqFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(Math.min(rows, 6)), value: k === 'bullets' ? (Array.isArray(cp.bullets) ? cp.bullets.join('\n') : cp.bullets || '') : cp[k] || '', set: upd('copy', k) })),
+        seqFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(Math.min(rows, 6)), wf: 'seq-' + k, ph: WF_PH[k] || '', value: k === 'bullets' ? (Array.isArray(cp.bullets) ? cp.bullets.join('\n') : cp.bullets || '') : cp[k] || '', set: upd('copy', k) })),
         seqDoc: this.E.renderEmail({ ...cp, bullets: Array.isArray(cp.bullets) ? cp.bullets : String(cp.bullets || '').split('\n').filter(Boolean) }, { brand: this.D.siteBrand(), esp: 'hubspot', href: '#' }),
         saveSeq: () => { const copy = { ...cp, bullets: Array.isArray(cp.bullets) ? cp.bullets : String(cp.bullets || '').split('\n').map((x) => x.trim()).filter(Boolean) };
           this.setState((s2) => { const all = { ...(s2.form.seed || {}) }; all[se.kind] = { ...(all[se.kind] || {}), [se.key]: { ...se.plan, copy } }; return { form: { ...s2.form, seed: all }, seqEdit: null }; }); },
@@ -974,7 +1018,7 @@ class Component extends DCLogic {
       emName: em ? (ei + 1) + '. ' + em.name + ' · ' + em.when + ' · to ' + em.to : '', emGoal: em ? em.goal : '',
       emApprovedAria: em && em.approved ? 'true' : 'false', emTrack: track(!!(em && em.approved)), emKnob: knob(!!(em && em.approved)),
       toggleEmail: () => { if (!em || !em.content) return; this.update((x) => { const e = x.emails[ei]; e.approved = this.approval(!e.approved); if (e.approved) this.D.recordApproval('email:' + e.key, 'Email · ' + e.name + ' · ' + (x.name || ''), e.content); return x; }); },
-      emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
+      emFields: EM_FIELDS.map(([k, label, rows]) => ({ label, rows: String(rows), value: fv(k), wf: 'em-' + k, ph: WF_PH[k] || '', set: (e) => { const v = e.target.value; this.setState((s2) => ({ emDraft: { ...(s2.emDraft || {}), [k]: v } })); } })),
       saveEmail: this.saveEmail, emClean: !st.emDraft, emNote: st.emNote, setEmNote: (e) => this.setState({ emNote: e.target.value }),
       emSubject: fv('subject'), emPre: fv('preheader'), emFrameTitle: 'Preview of the ' + (em ? em.name : '') + ' email',
       emDoc: em && em.content ? this.E.renderEmail({ ...c, ...dr, cta: dr.cta || c.cta || this.ctaOf(o, em).text, bullets: dr.bullets != null ? String(dr.bullets).split('\n').filter(Boolean) : c.bullets }, { brand: b, esp: o.esp, href: dr.ctaUrl || this.ctaOf(o, em).url, colors: em.colors }) : '<!doctype html><html lang="en"><body style="font-family:sans-serif;color:#4A5168;display:flex;align-items:center;justify-content:center;height:90vh;margin:0"><p>' + (st.busy ? 'Writing this email…' : 'Not written yet.') + '</p></body></html>' });
