@@ -39,7 +39,7 @@ class Component extends DCLogic {
     camps: [], busy: false, pickQ: '', sfList: {}, tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, err: '', saved: '', note: '', emDraft: null, emNote: '', delAsk: false };
 
   componentDidMount() {
-    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister(); this.wfRegister();
+    this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister(); this.wfRegister(); this.followCampaign();
     this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
       if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
@@ -58,7 +58,7 @@ class Component extends DCLogic {
       save: async () => { const f = this._lgFail; if (f) (this._unsaved = this._unsaved || new Set()).add(f.id); await this.flushSave(); } });
   }
   // The Saved Files bar under the client picker; follows the client when it changes.
-  componentDidUpdate() { this.mountSaved(); }
+  componentDidUpdate() { this.mountSaved(); this.showOpenCampaign(); }
   mountSaved() {
     const host = document.querySelector('[data-cos-saved-mount]'); if (!host || !window.CosSavedBar || !this.D || !this.D.savedBarInfo) return;
     const { clientId, orgId } = this.D.savedBarInfo(); if (!clientId) return;
@@ -90,19 +90,24 @@ class Component extends DCLogic {
     const S = window.CatalystShell; if (!S || !this.D) return; info = info || this.state.info || {};
     const o = { app: 'Content Offer Builder', mount: document.querySelector('[data-cos-shell-mount]') || null, saved: 'contentoffers', runMode: 'you',
       clientId: info.clientId || '', clientName: this.D.clientName(), clients: info.clients || [], userEmail: (info.user && info.user.email) || '', onSignOut: () => this.D.signOut(),
-      onClientChange: (id) => this.pickClient(id), onSave: () => (window.CosLeaveGuard && window.CosLeaveGuard.isDirty() ? this.flushSave() : Promise.resolve()),
-      campaigns: this.state.camps.map((c) => ({ id: c.id, name: c.name })), campaignId: this.shellCampId() || '', onCampaignChange: (id) => this.pickCampaign(id) };
+      onClientChange: (id) => this.pickClient(id), onSave: () => (window.CosLeaveGuard && window.CosLeaveGuard.isDirty() ? this.flushSave() : Promise.resolve()) }; // the Campaign picker is the shared one (cos-campaign-picker.js); followCampaign() follows it
     if (info.agency) o.agency = info.agency; const org = this.D.orgId(); if (org) o.orgId = org;
     try { (this._shellOn ? S.update : S.init).call(S, o); this._shellOn = true; } catch (e) { console.warn('CatalystOS header', e); }
   }
   shellCampId() { const o = this.state.view === 'offer' ? this.offer() : null; return o ? o.campaignId || '' : this.formCampId() || ''; }
-  // The campaign picker in the purple bar: a new offer's campaign, or (with an offer open) the campaign this offer is for.
-  pickCampaign(id) {
-    if (!id) return; this.D.setCurrentCampaign(id);
-    const o = this.state.view === 'offer' ? this.offer() : null, c = this.campaign(id);
-    if (o) { if (o.campaignId !== id) this.update((x) => { x.campaignId = id; x.campaignName = c ? c.name : ''; return x; }); }
-    else this.setForm({ camp: id });
+  // The header Campaign picker dictates the offer's campaign (Erika, Oct 23): what the plan, pages, emails and popups are
+  // written from, where new offers are saved and tagged. Picking another campaign with an offer of another campaign open
+  // leaves that offer (the leave guard asks first when it has unsaved changes) and starts a new one in the new campaign.
+  followCampaign() {
+    window.addEventListener('cos-campaign-picked', (e) => { const d = e.detail || {}; const info = this.state.info || {}; if (!d.clientId || d.clientId !== info.clientId) return;
+      const id = d.campaignId || 'none', st = this.state, o = st.view === 'offer' ? this.offer() : null;
+      const leave = o && (o.campaignId || 'none') !== id;
+      const go = (camps) => this.setState((x) => ({ curCamp: id, ...(camps ? { camps } : {}), form: { ...(x.form || {}), camp: '' }, ...(leave ? { view: 'new', offerId: null, field: null, err: '', delAsk: false } : {}) }));
+      if (id === 'none' || st.camps.some((c) => c.id === id)) go(); else this.D.campaigns().then(go).catch(() => go()); });
   }
+  // An offer of another campaign was opened: the header Campaign picker shows its campaign.
+  showOpenCampaign() { const st = this.state, o = st.view === 'offer' ? this.offer() : null; const id = o && o.campaignId; const cid = (st.info || {}).clientId;
+    if (!id || !cid || this._shownCamp === o.id + id) return; this._shownCamp = o.id + id; if (window.CosCampaignPicker) window.CosCampaignPicker.show(cid, id); }
   // Save now (task bar Save, the leave guard): any typed edit, then every save still under way.
   async flushSave() {
     this._saveNow = (this._saveNow || 0) + 1;
@@ -153,7 +158,7 @@ class Component extends DCLogic {
   }
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
   // Current campaign (Erika, Oct 22): with nothing picked here, the person's current campaign comes first, then the active one.
-  formCampId() { const f = this.state.form; if (f.camp === 'none') return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
+  formCampId() { const f = this.state.form; if (f.camp === 'none' || (!f.camp && this.state.curCamp === 'none')) return null; if (f.camp) return f.camp; const a = (this.state.curCamp && this.state.camps.find((c) => c.id === this.state.curCamp)) || this.state.camps.find((c) => this.D.isActiveCampaign(c)); return a ? a.id : null; }
   // You Run It (Erika, Oct 23): a change stays on screen as unsaved until a Save button (saving(), flushSave) saves it.
   persist(o) {
     if (COS_AUTO || this._saveNow) return this.persistNow(o);
@@ -914,7 +919,7 @@ class Component extends DCLogic {
       return { name: x.name || 'Content offer', meta: this.entryOf(x).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, popDraft: null, popIdx: 0, delAsk: false, err: '', pieceNote: '', snipNote: '' }),
         style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
     const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, ...this.newVals(st, f), newOffer: () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } })),
-      campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
+      campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, campName: (() => { const c = campId && st.camps.find((x) => x.id === campId); return c ? c.name : 'No campaign (we choose a timely direction)'; })(), setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
       kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
       dateVal: f.date, setDate: (e) => this.setForm({ date: e.target.value }), timeVal: f.time, setTime: (e) => this.setForm({ time: e.target.value }), whereVal: f.where, setWhere: (e) => this.setForm({ where: e.target.value }),
