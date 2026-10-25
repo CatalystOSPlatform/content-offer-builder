@@ -40,7 +40,7 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this.start(); this.sfRegister(0); this.cosCreateMount(); this.leaveGuard(0); this.strategyRegister(); this.wfRegister(); this.followCampaign();
-    this._onMsg = (e) => { const d = e.data || {}; if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
+    this._onMsg = (e) => { const d = e.data || {}; if (d.cosPhotoSwap) { this.swapPhoto(d.cosPhotoSwap, d.src); return; } if (d.wb === 'page' && typeof d.i === 'number') this.setState({ pageIdx: d.i, field: null }); if (d.wb === 'edit' && d.f) this.openField(d.f); if (d.wb === 'layout' && typeof d.si === 'number') this.stepLayout(d.si, d.d || 1);
       if (d.cod === 'edit' && d.f) { try { this._docY = e.source.scrollY; } catch (x) {} this.editDoc(d.f, d.v); }
       if (d.type === 'cos-auto' && d.job && this._pieceWait && d.job === this._pieceWait.job) this.pieceReport(d);
       if (d.cod === 'pages' && d.n) { if (this._docY != null) { try { e.source.scrollTo(0, this._docY); } catch (x) {} this._docY = null; } if (this.state.docPages !== d.n) this.setState({ docPages: d.n }); } };
@@ -197,7 +197,7 @@ class Component extends DCLogic {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const fr = document.createElement('iframe'); fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1; fr.title = 'PDF';
     fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:900px;height:1200px;border:0;pointer-events:none;';
-    const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.Dk.renderDoc(o.doc, this.D.siteBrand(), { kind: o.kind }); document.body.appendChild(fr);
+    const loaded = new Promise((r) => { fr.onload = r; }); fr.srcdoc = this.Dk.renderDoc(o.doc, this.D.siteBrand(), { kind: o.kind, photoV: o.photoV }); document.body.appendChild(fr);
     await Promise.race([loaded, wait(8000)]); const d = fr.contentDocument;
     try { await Promise.race([d.fonts && d.fonts.ready, wait(3000)]); } catch (e) {}
     // the Brand Command heading and body fonts are loaded before the pages are drawn, so the PDF and its thumbnail match
@@ -336,7 +336,7 @@ class Component extends DCLogic {
   // Plan the strategy for a new offer from the form (kind, campaign, title, topic, event details).
   async planNew(alive) {
     const f = this.state.form, campId = this.formCampId(), camp = this.campaign(campId);
-    const e = this.formEntry(), base = { id: 'o' + Date.now(), v: 2, type: 'offer', ...(e ? { offerType: e.id, answers: { ...(f.answers || {}) } } : {}), kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
+    const e = this.formEntry(), base = { id: 'o' + Date.now(), v: 2, photoV: 1, type: 'offer', ...(e ? { offerType: e.id, answers: { ...(f.answers || {}) } } : {}), kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, story: f.story || '', research: f.research || '', conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], createdAt: Date.now() };
     const strategy = await this.D.planOffer({ offer: base, campaign: camp });
     if (!alive()) throw this.stopped();
     const o = await this.persist({ ...base, name: (this._ccAuto && this._ccAuto.title) || strategy.title || base.title || (e ? e.label : this.O.offerById(f.kind).label), strategy, strategyApproved: null });
@@ -350,7 +350,7 @@ class Component extends DCLogic {
   startManual = async () => {
     const f = this.state.form, e = this.formEntry(); if (!e || this.state.busy) return;
     const campId = this.formCampId(), camp = this.campaign(campId);
-    const o = await this.saving(() => this.persist({ id: 'o' + Date.now(), v: 2, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() }));
+    const o = await this.saving(() => this.persist({ id: 'o' + Date.now(), v: 2, photoV: 1, type: 'offer', offerType: e.id, answers: { ...(f.answers || {}) }, kind: f.kind, format: f.kind, title: f.title.trim(), topic: f.topic.trim(), date: f.date.trim(), time: f.time.trim(), where: f.where.trim(), people: f.people.trim(), speakers: (f.speakers || []).slice(), videoUrl: (f.videoUrl || '').trim(), tpl: f.kind === 'webinar' ? (f.tpl || 'editorial') : '', campaignId: campId, campaignName: camp ? camp.name : '', seed: (f.seed || {})[f.kind] || {}, conv: !!this.CV, esp: 'hubspot', pageUrl: '', formUrl: '', pages: [], emails: [], name: f.title.trim() || e.label, strategy: null, strategyApproved: null, createdAt: Date.now() }));
     this.setState({ offerId: o.id, view: 'offer', tab: 'doc', note: '', form: { ...FORM0 } });
   };
 
@@ -738,7 +738,7 @@ class Component extends DCLogic {
     };
     const opts = this.P.designOptions('offer', b.industry, 6, b.aesthetic), d = opts[Math.max(0, ['whitepaper', 'webinar', 'guide', 'workshop'].indexOf(kind))] || opts[0];
     const keys = O.pages, idx = Math.max(0, keys.indexOf(key));
-    const site = { v: 2, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
+    const site = { v: 2, photoV: 1, type: 'offer', format: kind, name: b.name, design: { style: d.style, lay: d.lay, solid: d.solid || {}, motion: 0 },
       pages: keys.map((k, i) => ({ key: k, title: i === 0 ? 'Home' : this.K.PAGES[k].title, slug: i === 0 ? 'index' : this.K.PAGES[k].slug, sections: i === idx ? this.O.sectionsFor(kind, k, this.K.PAGES).map((sk) => ({ kind: sk, content: C[sk] || {} })) : [] })) };
     if (tpl && tpl !== 'panels' && key === 'offer') return (this._sample[ck] = this.W.renderWebinar(site, idx, b, { tpl }));
     return (this._sample[ck] = this.K.renderPage(site, idx, b, { bare: false }));
@@ -787,6 +787,14 @@ class Component extends DCLogic {
   }
   ctaOf(o, em) { const d = this.O.ctaFor(o.kind, em.key, o); return { text: (em.content && em.content.cta) || d.text, url: (em.content && em.content.ctaUrl) || d.url || o.pageUrl || '#' }; }
   // Webinar main pages use the chosen template (Editorial, Horizon, Gallery); everything else uses the panel designs.
+  // Swap image in the page preview (pilot-dash brand-photos.js): Brand Command photos ranked for that spot; the pick is saved as
+  // the section's own photo (page.photos for a page-level spot), so it stays through edits and re-renders.
+  swapPhoto(key, cur) {
+    const BP = window.CosBrandPhotos; const b = this.D.siteBrand(); if (!BP || !key) return; const [si, k] = String(key).split(':'); const pi = this.state.pageIdx || 0;
+    const o = this.offer(); const pg = o && o.pages && o.pages[pi]; const sec = si === 'p' ? null : pg && pg.sections[+si];
+    BP.swapDialog({ pool: b.photoPool || [], slot: { role: BP.roleForKind(sec ? sec.kind : 'page', +k), w: +k ? 4 : 16, h: +k ? 3 : 9 }, current: cur }).then((f) => { if (!f) return;
+      const put = (x) => { const t = si === 'p' ? x.pages[pi] : x.pages[pi] && x.pages[pi].sections[+si]; if (t) t.photos = { ...(t.photos || {}), [+k]: f.src }; return x; };
+      this.persist(put(JSON.parse(JSON.stringify(o)))); }); }
   renderOfferPage(o, i, b, opts = {}) { const pg = o.pages[i]; if (o.conversion) return this.CV ? this.CV.renderConversionPage(this.convSite(o), i, b, opts) : '<!doctype html><html lang="en"><body><p>The landing page designer couldn’t load. Please reload the page.</p></body></html>'; if (o.kind === 'webinar' && o.tpl && o.tpl !== 'panels' && pg && pg.key === 'offer') return this.W.renderWebinar(o, i, b, { ...opts, tpl: o.tpl }); return this.K.renderPage(o, i, b, opts); }
   emailHtml(o, em) { const c = this.ctaOf(o, em); return this.E.renderEmail({ ...(em.content || {}), cta: c.text }, { brand: this.D.siteBrand(), esp: o.esp, href: c.url, colors: em.colors }); }
   pageBrand(o) { return { ...this.D.siteBrand(), formAction: o.formUrl || '' }; }
@@ -799,7 +807,7 @@ class Component extends DCLogic {
   };
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
-    const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind });
+    const files = {}; if (o.doc) files['document/' + (o.doc.title || o.name || 'document').replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.html'] = this.Dk.renderDoc(o.doc, b, { kind: o.kind, photoV: o.photoV });
     // The CTA popups go into the main landing page (never the thank-you page), and as a snippet for the client's own site.
     const pops = this.PK.normalizeAll(this.popupsOf(o)), popOpts = { brand: this.D.siteBrand(), href: o.pageUrl || '#', offerId: o.id, title: (o.strategy || {}).title || o.name };
     o.pages.forEach((p, i) => { const html = this.renderOfferPage(o, i, b); files['landing-pages/' + p.slug + '.html'] = i === 0 && pops.length ? this.PK.injectIntoPage(html, pops, popOpts) : html; });
@@ -871,7 +879,7 @@ class Component extends DCLogic {
   funnelVals(o, st, e, isDoc) {
     const B = this.CAT.builderOf(e), dk = o.doc, pc = o.piece, b = this.D.siteBrand();
     let docMini = '';
-    if (st.tab === 'funnel' && isDoc && dk) { const ck = JSON.stringify([dk, o.kind, b.primary, b.logo]); if (!this._miniDoc || this._miniDoc.k !== ck) this._miniDoc = { k: ck, html: this.Dk.renderDoc(dk, b, { kind: o.kind }) }; docMini = this._miniDoc.html; }
+    if (st.tab === 'funnel' && isDoc && dk) { const ck = JSON.stringify([dk, o.kind, b.primary, b.logo]); if (!this._miniDoc || this._miniDoc.k !== ck) this._miniDoc = { k: ck, html: this.Dk.renderDoc(dk, b, { kind: o.kind, photoV: o.photoV }) }; docMini = this._miniDoc.html; }
     const have = isDoc ? dk : pc, isEv = !!this.O.offerById(o.kind).event;
     const planned = !o.emails.length, seq = planned ? this.D.seqFor(o) : o.emails;
     const pops = this.PK.normalizeAll(this.popupsOf(o));
@@ -1009,7 +1017,7 @@ class Component extends DCLogic {
     // The white paper or guide itself
     const dk = o.doc, dNoun = O.offerById(o.kind).noun, dBrand = this.D.siteBrand();
     if (tab === 'doc') { const ck = JSON.stringify([dk, o.kind, dBrand.primary, dBrand.secondary, dBrand.accent, dBrand.logo, dBrand.logoWhite, dBrand.head, dBrand.body, (dBrand.images || [])[0]]);
-      if (!this._docCache || this._docCache.k !== ck) this._docCache = { k: ck, html: dk ? this.Dk.renderDoc(dk, dBrand, { kind: o.kind, editable: true }) : '' }; }
+      if (!this._docCache || this._docCache.k !== ck) this._docCache = { k: ck, html: dk ? this.Dk.renderDoc(dk, dBrand, { kind: o.kind, editable: true, photoV: o.photoV }) : '' }; }
     Object.assign(vals, { docNoun: dNoun, docLabel: ent.label, isDocPiece: isDoc, hasDoc: isDoc && !!dk, noDoc: !dk, docWriting: isDoc && !dk && st.busy, docIdle: isDoc && !dk && !st.busy,
       docSrc: tab === 'doc' && dk ? this._docCache.html : '', docFrameTitle: 'The ' + dNoun + ', page by page (click any text to edit it)',
       docInfo: dk ? (st.docPages ? st.docPages + ' pages · ' : '') + (dk.sections || []).length + ' sections' + (dk.approved ? ' · Approved by ' + (dk.approved.by || 'you') : dk.by === 'person' ? ' · Edited by you' : ' · Written by CatalystOS') : '',
