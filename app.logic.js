@@ -600,7 +600,7 @@ class Component extends DCLogic {
   cosCreateMount() {
     const go = () => {
       if (!window.CatalystCreate) { if ((this._ccTry = (this._ccTry || 0) + 1) < 60) setTimeout(go, 250); return; }
-      window.CatalystCreate.mount({ designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
+      window.CatalystCreate.mount({ designFormat: 'web-graphic:css' /* Designer accessibility gate: screen minimums in CSS px */, designRoots: function () { return document.querySelectorAll("main iframe:not([aria-hidden=\"true\"])"); },
         enabled: () => this.state.boot === 'ready' && !!this.O && !this.state.busy && !this.state.zoom && !this.state.seqEdit && this.ccTarget().what !== 'none',
         noun: () => { const t = this.ccTarget(), o = this.offer(); if (t.what === 'page') return 'landing page'; if (t.what === 'email') return 'email'; if (t.what === 'popups') return 'CTA popups'; if (t.what === 'piece') return this.entryOf(o).noun; if (t.what === 'doc') return this.O.offerById(o.kind).noun; return (this.O ? this.O.offerById(t.what === 'new' ? this.state.form.kind : o.kind).noun : 'content') + ' offer'; },
         context: () => {
