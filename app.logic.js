@@ -58,7 +58,7 @@ class Component extends DCLogic {
       save: async () => { const f = this._lgFail; if (f) (this._unsaved = this._unsaved || new Set()).add(f.id); await this.flushSave(); } });
   }
   // The Saved Files bar under the client picker; follows the client when it changes.
-  componentDidUpdate() { this.mountSaved(); this.showOpenCampaign(); }
+  componentDidUpdate() { this.mountSaved(); this.showOpenCampaign(); this.twSync(); }
   mountSaved() {
     const host = document.querySelector('[data-cos-saved-mount]'); if (!host || !window.CosSavedBar || !this.D || !this.D.savedBarInfo) return;
     const { clientId, orgId } = this.D.savedBarInfo(); if (!clientId) return;
@@ -138,6 +138,69 @@ class Component extends DCLogic {
   formEntry() { return this.state.form.offerType ? this.CAT.byId(this.state.form.offerType) : null; }
   // Start an offer of this type: the details for it, its funnel and where the piece is made (no AI yet).
   pickType(id) { const e = this.CAT.byId(id); if (!e) return; this.setState((st) => ({ form: { ...st.form, offerType: e.id, kind: e.engineKind, answers: {}, tpl: e.engineKind === 'webinar' ? (st.form.tpl || 'editorial') : st.form.tpl }, err: '' })); try { window.scrollTo({ top: 0 }); } catch (e2) {} }
+  // ---- Offer Types (Erika, Oct 26: "Every builder's home is the shared types page", as in the Deck Builder) ----
+  // One page, pilot-dash cos-types-window.js: the home shows it inline ("What Content Offer Are You Building?", with the search
+  // the old picker had), and the offer's small "Offer Types ›" button opens the same page as a window. Cards: the six core
+  // offers (white paper, guide, case study, webinar, on-demand webinar, workshop), then All Types: the 76 offer types in their
+  // catalog categories. Each card shows the piece itself in this client's brand (lib/offer-preview.js). A card click goes
+  // straight to that type's form ("Plan a content offer"), as the old accordion did. No Blank card: every offer starts from a type.
+  twClose() { try { if (window.CosTypesWindow) window.CosTypesWindow.close(); } catch (e) {} }
+  twPick(id) {
+    if (this.state.busy) return; this.twClose();
+    if (this.state.view !== 'offer') return this.pickType(id);
+    const go = () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } }), () => this.pickType(id));
+    const G = window.CosLeaveGuard; if (G && G.confirmLeave) G.confirmLeave(go); else go();
+  }
+  twMods() {
+    if (!this._twM) this._twM = Promise.all([lib(this.D.PILOT + 'industry-choice.js'), lib(this.D.PILOT + 'industry-playbooks/index.js')]).then(async ([IC, I]) => { const TX = await IC.loadTX(); this._tw = { IC, I, TX }; this.setState({ twReady: Date.now(), twErr: '' }); })
+      .catch((e) => { console.warn('Offer types industry', e); this._twM = null; this.setState({ twErr: 'The industry could not load from Brand Command right now. Every offer type is still listed below.' }); });
+    return this._twM;
+  }
+  twInd() {
+    const M = this._tw, st = this.state, cid = (st.info || {}).clientId;
+    if (!cid) return { state: 'no-client', line: 'Pick a client in the header to see their industry from Brand Command.' };
+    if (!M || st.boot !== 'ready') { if (st.boot === 'ready' && this.D) this.twMods(); return { state: 'loading', line: st.twErr ? '' : 'Reading this client’s Brand Command…' }; }
+    try { return M.IC.readOnly({ cid, client: (this.D.clientRaw && this.D.clientRaw()) || { id: cid }, I: M.I, TX: M.TX, noun: 'offers', org: this.D.orgId ? this.D.orgId() : '' }); } catch (e) { return { state: 'none', line: '' }; }
+  }
+  // An offer type's thumbnail: the piece itself (its first page, slide, email or screen) in this client's brand, scaled.
+  twThumb(e) {
+    let p = null; try { p = this.PV ? (this.piecePreview(e, '', null).pages || [])[0] : null; } catch (x) { p = null; }
+    if (!p || !p.html) return '';
+    const sc = Math.min(156 / p.h, 220 / p.w), w = Math.round(p.w * sc), h = Math.round(p.h * sc);
+    const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><span style="position:relative;display:block;width:' + w + 'px;height:' + h + 'px;overflow:hidden;border-radius:4px;background:#FFFFFF;box-shadow:0 4px 14px rgba(8,26,83,.16)">' +
+      '<iframe title="" aria-hidden="true" tabindex="-1" loading="lazy" srcdoc="' + esc(p.html) + '" style="position:absolute;top:0;left:0;width:' + p.w + 'px;height:' + p.h + 'px;border:0;transform:scale(' + sc.toFixed(4) + ');transform-origin:0 0;pointer-events:none;background:#FFFFFF"></iframe></span></span>';
+  }
+  twCfg() {
+    const CAT = this.CAT, st = this.state, ch = this.twInd();
+    const tint = (hex) => { const n = parseInt(String(hex || '#5B14D6').slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255, m = (c) => Math.round(c + (255 - c) * 0.9); return 'rgb(' + m(r) + ',' + m(g) + ',' + m(b) + ')'; };
+    const card = (e) => { const c = CAT.CATEGORIES.find((x) => x.id === e.category) || {}, ic = CAT_ICONS[e.category] || CAT_ICONS.A, B = CAT.builderOf(e);
+      return { id: e.id, name: e.label, group: c.label || '', eyebrow: c.label || '', desc: e.oneLine + (e.ready === false ? ' Interactive tool: its builder comes in the next phase.' : ''), meta: e.ready === false ? 'Coming next phase' : B.label, // the builder that makes it
+        ink: ic.bg, tint: tint(ic.bg), thumb: () => this.twThumb(e), start: { label: 'Use template →', aria: 'Use template: ' + e.label, onClick: () => this.twPick(e.id) } }; };
+    const CORE = ['white-paper', 'educational-guide', 'case-study', 'webinar-package', 'on-demand-webinar', 'virtual-workshop'];
+    const core = CORE.map((id) => CAT.byId(id)).filter(Boolean).map(card);
+    const groups = CAT.groups('').map((g) => { const ic = CAT_ICONS[g.id] || CAT_ICONS.A, cards = g.items.map(card);
+      return { id: g.id, name: (g.extra ? 'More: ' : g.id + '. ') + g.label, goal: '', count: cards.length + (cards.length === 1 ? ' offer type' : ' offer types'), icon: String(ic.svg || '').replace(/width="22" height="22"/, 'width="20" height="20"'), tint: tint(ic.bg), ink: ic.bg, cards }; });
+    return {
+      heading: 'What Content Offer Are You Building?', search: { placeholder: 'Search offer types, e.g. calculator, report, webinar', label: 'Search offer types', noun: 'offer types' },
+      industry: { line: ch.line || '', href: ch.href || '', linkText: ch.linkText || '', err: st.twErr || '' },
+      sections: [
+        { id: 'rec', kind: 'cards', industry: true, cards: core },
+        { id: 'all', kind: 'groups', button: 'All Types', title: 'All Offer Types', note: CAT.CATALOG.length + ' offer types in ' + groups.length + ' categories, grouped by what they do. Each one is made in the builder that suits it; this app builds the funnel around it.', groups },
+      ],
+    };
+  }
+  twSig() { const st = this.state, ch = this.twInd(); let b = null; try { b = this.D && this.D.siteBrand(); } catch (e) {} return JSON.stringify([(st.info || {}).clientId, st.boot, st.view, ch.state, ch.line, ch.href, st.twErr, st.twReady, b ? [b.primary, b.secondary, b.accent, b.logo, b.name, b.head, b.body] : null]); }
+  twSync() {
+    const W = window.CosTypesWindow; if (!W || !this.CAT) return; const open = W.current(); if (!this._twPg && !open) return;
+    const sig = this.twSig(); if (sig === this._twSigV) return; this._twSigV = sig;
+    const cfg = this.twCfg(); if (this._twPg) this._twPg.update(cfg); if (open && this._twWin === open) open.update(cfg);
+  }
+  twRef = (el) => {
+    if (el === this._twEl) return; if (this._twPg) { try { this._twPg.destroy(); } catch (e) {} this._twPg = null; } this._twEl = el;
+    if (el && window.CosTypesWindow && this.CAT) { this._twPg = window.CosTypesWindow.mount(el, this.twCfg()); this._twSigV = this.twSig(); }
+  };
+  twOpen = (e) => { const W = window.CosTypesWindow; if (!W || !this.CAT || this.state.busy) return; this._twWin = W.open(this.twCfg(), { title: 'Offer Types', trigger: (e && e.currentTarget) || null }); this._twSigV = this.twSig(); };
   // Switching clients happens right here: the new client's offers, campaigns and brand load, and nothing of the old client stays on screen.
   pickClient = async (id) => {
     const st = this.state, prev = (st.info || {}).clientId;
@@ -831,7 +894,7 @@ class Component extends DCLogic {
   newVals(st, f) {
     const CAT = this.CAT, e = this.formEntry(), q = st.pickQ || '', G = CAT.groups(q), B = (x) => CAT.builderOf(x);
     const badge = (x) => 'align-self:flex-start;font:800 12px Manrope,sans-serif;letter-spacing:.02em;border-radius:999px;padding:3px 9px;' + (x.ready === false ? 'background:#FFF4CC;color:#6B4E00;' : 'background:#F1EBFF;color:#3B1A8F;');
-    return { isPicker: st.view === 'new' && !e, isNewForm: st.view === 'new' && !!e,
+    return { isPicker: st.view === 'new' && !e, isNewForm: st.view === 'new' && !!e, twRef: this.twRef, twOpen: this.twOpen, twOn: !!window.CosTypesWindow, twMissing: !window.CosTypesWindow,
       pickQ: q, setPickQ: (ev) => this.setState({ pickQ: ev.target.value }), pickCount: CAT.CATALOG.length + ' offer types', pickNone: !G.length,
       pickResult: q.trim() ? G.reduce((n, g) => n + g.items.length, 0) + ' of ' + CAT.CATALOG.length + ' offer types match' : '',
       pickGroups: G.map((g) => { const open = !!q.trim() || !!(st.openCats || {})[g.id]; const ic = CAT_ICONS[g.id] || CAT_ICONS.A; return { headId: 'cob-cat-' + g.id, bodyId: 'cob-catb-' + g.id, open, ariaOpen: open ? 'true' : 'false',
