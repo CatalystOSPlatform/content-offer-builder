@@ -4,7 +4,7 @@
 const CAT_ICONS = {"A": {"bg": "#5B14D6", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 18h6\"/><path d=\"M10 22h4\"/><path d=\"M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z\"/></svg>"}, "B": {"bg": "#0F6E6E", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 11l3 3L22 4\"/><path d=\"M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11\"/></svg>"}, "C": {"bg": "#1D4ED8", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3v18\"/><path d=\"M5 7h14\"/><path d=\"M5 7l-3 7a4 4 0 0 0 6 0z\"/><path d=\"M19 7l-3 7a4 4 0 0 0 6 0z\"/></svg>"}, "D": {"bg": "#B42318", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/><path d=\"M10 14l2 2 3-3\"/></svg>"}, "E": {"bg": "#C2410C", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 17l6-6 4 4 8-8\"/><path d=\"M14 7h7v7\"/></svg>"}, "data": {"bg": "#0E7490", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3v18h18\"/><rect x=\"7\" y=\"12\" width=\"3\" height=\"6\"/><rect x=\"12\" y=\"8\" width=\"3\" height=\"10\"/><rect x=\"17\" y=\"5\" width=\"3\" height=\"13\"/></svg>"}, "abm": {"bg": "#9D174D", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"5\"/><circle cx=\"12\" cy=\"12\" r=\"1.5\"/></svg>"}, "education": {"bg": "#15803D", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M22 10L12 5 2 10l10 5 10-5z\"/><path d=\"M6 12v5c3 2 9 2 12 0v-5\"/></svg>"}, "nurture": {"bg": "#081A53", "svg": "<svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"M22 7l-10 6L2 7\"/></svg>"}};
 const lib = (p) => import(new URL(p, document.baseURI).href);
 const PILL = { review: ['Needs review', '#A11A1A', '#FDECEC'], approved: ['✓ Approved', '#14663A', '#E8F6EE'] };
-const pill = (k) => { const [, fg, bg] = PILL[k]; return 'display:inline-block;white-space:nowrap;margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:3px 9px;color:' + fg + ';background:' + bg + ';border:1px solid ' + fg + ';'; };
+const pill = (k) => { const [, fg, bg] = PILL[k]; return 'display:inline-block;white-space:nowrap;margin-left:8px;font:800 12px Manrope,sans-serif;border-radius:999px;padding:3px 9px;color:' + fg + ';background:' + bg + ';border:1px solid ' + fg + ';'; };
 const getPath = (o, path) => path.split('.').reduce((a, k) => (a == null ? a : a[k]), o);
 const setPath = (o, path, v) => { const ks = path.split('.'); const root = JSON.parse(JSON.stringify(o || {})); let cur = root; ks.slice(0, -1).forEach((k, i) => { if (cur[k] == null) cur[k] = /^\d+$/.test(ks[i + 1]) ? [] : {}; cur = cur[k]; }); cur[ks[ks.length - 1]] = v; return root; };
 // The CatalystOS Approve toggle (Style Guide → Approve toggle): 36 × 20 switch, #2E9E5B on, #7A8199 off, white knob.
@@ -23,7 +23,7 @@ const ICON_PATHS = {
   replay: '<rect x="3" y="4" width="18" height="14" rx="2"/><path d="M10 8.5v5l4.3-2.5z"/><path d="M7 21h10"/>',
   workshop: '<circle cx="8" cy="8" r="2.5"/><circle cx="16" cy="8" r="2.5"/><path d="M3.5 19a4.5 4.5 0 0 1 9 0M11.5 19a4.5 4.5 0 0 1 9 0"/>',
 };
-const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#5A12D6') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
+const iconUrl = (kind, color) => 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + (color || '#6818F8') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (ICON_PATHS[kind] || ICON_PATHS.whitepaper) + '</svg>');
 const iconBox = (on, size) => 'flex:none;width:' + size + 'px;height:' + size + 'px;border-radius:10px;display:flex;align-items:center;justify-content:center;' + (on ? 'background:#6818F8;' : 'background:#F1EBFF;');
 
 // How many parts of an offer (the document, each landing page, each email) are written at the same time.
@@ -591,7 +591,7 @@ class Component extends DCLogic {
     Object.keys(seen).slice(0, 6).forEach((m) => notes.push('Fill in: ' + m));
     // In a hands-off run the document's PDF is linked when it is saved (ccAutoSave), so that blocker is reported there instead.
     if (o.conversion && this.CV) { const R = this.CV.scorecard(this.convSite(o), this.D.siteBrand()); (R.blockers || []).filter((b) => !(this._ccAuto && o.doc && /isn’t linked yet/.test(b))).forEach((b) => notes.push('Before publishing the landing page: ' + b)); (R.notes || []).forEach((b) => notes.push(b)); }
-    if (this.O.offerById(o.kind).event) notes.push('Make the event graphics (Zoom slides, banners, posts) from the Launch tab: Open the Event Graphics Builder.');
+    if (this.O.offerById(o.kind).event) notes.push('Make the event graphics (Zoom slides, banners, posts) from the Launch tab: Open the Campaign Graphics Builder.');
     const e = this.entryOf(o), B = this.CAT.builderOf(e);
     if (o.offerType && !this.isDocKind(o) && !o.piece && e.builder !== 'webinar') notes.push(e.ready === false ? 'The ' + e.noun + ' itself is an interactive tool, coming in the next phase. The funnel around it can be planned now.' : 'Next: make the ' + e.noun + ' itself. On its tab, click Let CatalystOS Create This to make it in the ' + B.label + ', or I’ll Make This Myself.');
     if (this.ccTarget().what === 'popups') notes.push('Check each popup’s wording and timing, then approve them. They never claim numbers the offer doesn’t support.');
@@ -801,9 +801,9 @@ class Component extends DCLogic {
   // Webinars and workshops: make the event graphics (Zoom slides, banners, LinkedIn post, newsletter) in the Event Graphics Builder.
   openGraphics = async () => {
     const o = this.offer(); if (!o) return; const st = o.strategy || {};
-    const w = window.open('', '_blank'); this.setState({ gfxNote: 'Opening the Event Graphics Builder…' });
+    const w = window.open('', '_blank'); this.setState({ gfxNote: 'Opening the Campaign Graphics Builder…' });
     try { const url = await this.D.eventGraphicsUrl(o, st.title || o.title || o.name); if (w) { w.opener = null; w.location.href = url; } else location.href = url; this.setState({ gfxNote: '' }); }
-    catch (e) { if (w) w.close(); this.setState({ gfxNote: 'Could not open the Event Graphics Builder.' }); }
+    catch (e) { if (w) w.close(); this.setState({ gfxNote: 'Could not open the Campaign Graphics Builder.' }); }
   };
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
@@ -822,14 +822,15 @@ class Component extends DCLogic {
     catch (e) { this.setState({ err: 'Could not make the download: ' + (e && e.message || e) }); }
   };
   removeOffer = async () => {
-    if (!this.state.delAsk) return this.setState({ delAsk: true });
-    const o = this.offer(); if (!o) return; await this.deleteOfferNow(o.id);
+    const o = this.offer(); if (!o) return;
+    if (!(await CosDialog.confirm('Delete “' + (o.name || 'this content offer') + '”? This cannot be undone.', { ok: 'Delete', danger: true }))) return;
+    await this.deleteOfferNow(o.id);
   };
 
   // ---------- view values: the new-offer picker and details ----------
   newVals(st, f) {
     const CAT = this.CAT, e = this.formEntry(), q = st.pickQ || '', G = CAT.groups(q), B = (x) => CAT.builderOf(x);
-    const badge = (x) => 'align-self:flex-start;font:800 10.5px Manrope,sans-serif;letter-spacing:.02em;border-radius:999px;padding:3px 9px;' + (x.ready === false ? 'background:#FFF4CC;color:#6B4E00;' : 'background:#F1EBFF;color:#3B1A8F;');
+    const badge = (x) => 'align-self:flex-start;font:800 12px Manrope,sans-serif;letter-spacing:.02em;border-radius:999px;padding:3px 9px;' + (x.ready === false ? 'background:#FFF4CC;color:#6B4E00;' : 'background:#F1EBFF;color:#3B1A8F;');
     return { isPicker: st.view === 'new' && !e, isNewForm: st.view === 'new' && !!e,
       pickQ: q, setPickQ: (ev) => this.setState({ pickQ: ev.target.value }), pickCount: CAT.CATALOG.length + ' offer types', pickNone: !G.length,
       pickResult: q.trim() ? G.reduce((n, g) => n + g.items.length, 0) + ' of ' + CAT.CATALOG.length + ' offer types match' : '',
@@ -866,8 +867,8 @@ class Component extends DCLogic {
       pieceOpen: pc ? pc.openUrl || '#' : '#', hasPieceOpen: !!(pc && pc.openUrl), pieceMeta: pc ? (pc.by === 'catalystos' ? 'Made by CatalystOS' : 'Linked from Saved Files') + ' in the ' + B.label + ' · ' + new Date(pc.at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (pc.approved ? ' · Approved by ' + (pc.approved.by || 'you') : '') : '',
       pieceApprovedAria: pc && pc.approved ? 'true' : 'false', pieceTrack: track(!!(pc && pc.approved)), pieceKnob: knob(!!(pc && pc.approved)),
       togglePiece: () => this.update((x) => { if (!x.piece) return x; x.piece.approved = this.approval(!x.piece.approved); return x; }),
-      unlinkPiece: () => { if (st.pieceDel !== o.id) return this.setState({ pieceDel: o.id }); this.setState({ pieceDel: null }); this.update((x) => { delete x.piece; return x; }); },
-      unlinkLabel: st.pieceDel === o.id ? 'Click again to unlink' : 'Unlink',
+      unlinkPiece: async () => { if (!(await CosDialog.confirm('Unlink this piece from the offer? The piece itself stays in Saved Files.', { ok: 'Unlink' }))) return; this.setState({ pieceDel: null }); this.update((x) => { delete x.piece; return x; }); },
+      unlinkLabel: 'Unlink',
       makeMyself: this.makeMyself, pieceNote: st.pieceNote || '', pieceNoteOn: !!st.pieceNote,
       sfLoading: !!(sf && sf.loading), sfHasItems: items.length > 0, sfEmpty: !!sf && !sf.loading && !items.length,
       sfOptions: items.map((x, i) => ({ id: String(i), label: x.title + (x.at ? ' · ' + new Date(x.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') })),
@@ -947,11 +948,11 @@ class Component extends DCLogic {
     const O = this.O, f = st.form, K = O.offerById(f.kind), o = this.offer(), isOffer = st.view === 'offer' && !!o;
     const campId = this.formCampId();
     const offerRows = st.offers.map((x) => { const on = x.id === st.offerId && isOffer; const nApp = (x.pages || []).filter((p) => p.approved).length + (x.emails || []).filter((e) => e.approved).length, nAll = (x.pages || []).length + (x.emails || []).length;
-      return { name: x.name || 'Content offer', meta: this.entryOf(x).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, popDraft: null, popIdx: 0, delAsk: false, err: '', pieceNote: '', snipNote: '' }),
+      return { name: x.name || 'Content offer', meta: this.entryOf(x).label + (x.campaignName ? ' · ' + x.campaignName : '') + (nAll ? ' · ' + nApp + '/' + nAll + ' approved' : ' · strategy'), icon: iconUrl(x.kind, on ? '#FFFFFF' : '#6818F8'), iconBox: iconBox(on, 32), current: on ? 'page' : 'false', open: () => this.setState({ offerId: x.id, view: 'offer', tab: 'strategy', pageIdx: 0, emailIdx: 0, field: null, emDraft: null, popDraft: null, popIdx: 0, delAsk: false, err: '', pieceNote: '', snipNote: '' }),
         style: 'display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (on ? 'background:#F1EBFF;border:1px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #E6E8EC;') }; });
-    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, ...this.newVals(st, f), newOffer: () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } })),
+    const vals = { ...base, ready: true, isNew: st.view === 'new', isOffer, ...this.newVals(st, f), newOffer: () => { const go = () => this.setState((s2) => ({ view: 'new', offerId: null, err: '', delAsk: false, popDraft: null, pickQ: '', form: { ...s2.form, offerType: null } })); const G = window.CosLeaveGuard; if (G && G.confirmLeave) G.confirmLeave(go); else go(); },
       campVal: campId || 'none', campOptions: st.camps.map((c) => ({ id: c.id, label: c.name + (this.D.isActiveCampaign(c) ? ' (active)' : '') })), noCamps: !st.camps.length, campName: (() => { const c = campId && st.camps.find((x) => x.id === campId); return c ? c.name : 'No campaign (we choose a timely direction)'; })(), setCamp: (e) => { this.setForm({ camp: e.target.value }); this.D.setCurrentCampaign(e.target.value); },
-      kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#5A12D6'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
+      kindCards: O.OFFERS.map((x) => ({ label: x.label, desc: x.desc, icon: iconUrl(x.id, x.id === f.kind ? '#FFFFFF' : '#6818F8'), iconBox: iconBox(x.id === f.kind, 38), pressed: x.id === f.kind ? 'true' : 'false', pick: () => this.setForm({ kind: x.id }), style: 'display:flex;flex-direction:row;align-items:flex-start;gap:12px;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;' + (x.id === f.kind ? 'background:#F1EBFF;border:2px solid #6818F8;' : 'background:#FFFFFF;border:1px solid #D5D9E2;') })),
       titleVal: f.title, setTitle: (e) => this.setForm({ title: e.target.value }), topicVal: f.topic, setTopic: (e) => this.setForm({ topic: e.target.value }), isEvent: K.event,
       dateVal: f.date, setDate: (e) => this.setForm({ date: e.target.value }), timeVal: f.time, setTime: (e) => this.setForm({ time: e.target.value }), whereVal: f.where, setWhere: (e) => this.setForm({ where: e.target.value }),
       isReplay: !!K.replay, videoVal: f.videoUrl || '', setVideo: (e) => this.setForm({ videoUrl: e.target.value }),
@@ -995,8 +996,8 @@ class Component extends DCLogic {
     // Part 1 (the offer itself) · Part 2 (the funnel: pages, sequence, popups) · Part 3 (launch).
     const tabDef = [['strategy', 'Strategy', o.strategy ? (o.strategyApproved ? '✓' : 'Review') : ''], ['doc', ent.label, pieceDone ? (pieceDone.approved ? '✓' : 'Review') : ''], ['funnel', 'Funnel', ''], ['pages', 'Landing pages', nP ? apP + '/' + nP : ''], ['emails', 'Emails', nE ? apE + '/' + nE : ''], ['popups', 'CTA popups', o.popups ? (o.popups.approved ? '✓' : 'Review') : pops.length ? 'Suggested' : ''], ['launch', 'Launch', '']];
     Object.assign(vals, { saveNow: async () => { try { this.setState({ err: '' }); await this.flushSave(); } catch (e) { this.setState({ err: 'Could not save: ' + (e && e.message || e) }); } }, saveDisabled: !!st.busy,
-      offerName: o.name || 'Content offer', offerMeta: this.entryOf(o).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: st.delAsk ? 'Click again to delete' : 'Delete',
-      tabs: tabDef.map(([id, label, badge]) => ({ label, selected: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id, field: null }), style: btnTab(tab === id), badge, badgeStyle: badge ? 'margin-left:8px;font:800 10.5px Manrope,sans-serif;border-radius:999px;padding:2px 8px;' + (tab === id ? 'background:#FFFFFF;color:#081A53;' : 'background:#F1EBFF;color:#3B1A8F;') : 'display:none;' })),
+      offerName: o.name || 'Content offer', offerMeta: this.entryOf(o).label + ' · ' + (o.campaignName ? 'Campaign: ' + o.campaignName : 'No campaign') + (o.date ? ' · ' + o.date : ''), savedText: st.saved, removeOffer: this.removeOffer, removeLabel: 'Delete',
+      tabs: tabDef.map(([id, label, badge]) => ({ label, selected: tab === id ? 'true' : 'false', pick: () => this.setState({ tab: id, field: null }), style: btnTab(tab === id), badge, badgeStyle: badge ? 'margin-left:8px;font:800 12px Manrope,sans-serif;border-radius:999px;padding:2px 8px;' + (tab === id ? 'background:#FFFFFF;color:#081A53;' : 'background:#F1EBFF;color:#3B1A8F;') : 'display:none;' })),
       tabStrategy: tab === 'strategy', tabDoc: tab === 'doc', tabPages: tab === 'pages', tabEmails: tab === 'emails', tabLaunch: tab === 'launch', tabFunnel: tab === 'funnel', tabPopups: tab === 'popups',
       hasStrategy: !!o.strategy, noStrategy: !o.strategy });
     Object.assign(vals, this.pieceVals(o, st, ent, isDoc), this.funnelVals(o, st, ent, isDoc), this.popupVals(o, st, ent, pops));
