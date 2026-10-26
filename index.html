@@ -6,19 +6,19 @@
 <title>Content Offer Builder · CatalystOS</title>
 <script>
 // Live site: sign in with CatalystOS (the dashboard passes the sign-in when it opens this app).
-(function () { try { var h = location.hostname; if (/vercel\.app$/i.test(h) || /catalyst/i.test(h) || h === 'localhost') document.write('<script src="https://catalystos-dashboard-staging.vercel.app/cos-app-auth.js" data-require data-no-button data-no-back><\/script>'); } catch (e) {} })();
+(function () { try { var h = location.hostname; if (/vercel\.app$/i.test(h) || /catalyst/i.test(h) || h === 'localhost') document.write('<script src="https://pilot-dash-ten.vercel.app/cos-app-auth.js" data-require data-no-button data-no-back><\/script>'); } catch (e) {} })();
 </script>
 <script src="./support.js"></script>
-<script src="https://catalystos-dashboard-staging.vercel.app/saved-bar.js"></script>
-<script src="https://catalystos-dashboard-staging.vercel.app/catalyst-create.js"></script>
-<script src="https://catalystos-dashboard-staging.vercel.app/brand-photos.js"></script>
-<script src="https://catalystos-dashboard-staging.vercel.app/catalyst-shell.js"></script>
+<script src="https://pilot-dash-ten.vercel.app/saved-bar.js"></script>
+<script src="https://pilot-dash-ten.vercel.app/catalyst-create.js"></script>
+<script src="https://pilot-dash-ten.vercel.app/brand-photos.js"></script>
+<script src="https://pilot-dash-ten.vercel.app/catalyst-shell.js"></script>
 <style data-cos-wrap>:where(body *){text-wrap:pretty}:where(h1,h2,h3,h4,h5,h6,[role="heading"]){text-wrap:balance}:where(body,body *){font-synthesis:none}</style>
 </head>
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://catalystos-dashboard-staging.vercel.app/catalyst-ui.css">
+<link rel="stylesheet" href="https://pilot-dash-ten.vercel.app/catalyst-ui.css">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=Public+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0;background:#FAF9FD}a{color:#5A12D6}@keyframes cob-spin{to{transform:rotate(360deg)}}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #6818F8;outline-offset:2px}.cob-lbl{font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#4A5168}
 /* Task bar (platform standard): 32px, radius 9, Manrope 700 12.5px; Download navy; Save orange and last. */
@@ -1488,5 +1488,5 @@ class Component extends DCLogic {
 }
 
 </script>
-<script data-cos-staging>(function(){if(window.self!==window.top||window.__cosCost)return;window.__cosCost=1;var U="https://catalystos-dashboard-staging.vercel.app/api/usage",J=null,b,t;var ADM=["ehutchings@catalyst-os.ai","erika@crybabydesign.com"];var SEL=window.COS_COST_ANCHORS||[{s:'a[href="CatalystOS Admin.dc.html"]'},{s:'select[data-cos="ws"]'},{s:"[data-cos-admin]"},{s:".cos-signout",who:1},{s:"button",txt:"sign out",who:1}];function f(n){return "$"+(n>=100?n.toFixed(0):n.toFixed(2));}function mk(){if(b)return;b=document.createElement("button");b.type="button";b.id="cos-cost-link";b.textContent="Cost";b.setAttribute("aria-describedby","cos-cost-tip");b.style.cssText="position:fixed;z-index:2147483646;display:none;appearance:none;cursor:help;border:1.5px solid rgba(255,255,255,.6);background:transparent;color:#FFFFFF;font:800 12px/1 Manrope,Inter,system-ui,sans-serif;border-radius:999px;padding:5px 12px;white-space:nowrap;text-decoration:underline dotted;text-underline-offset:3px";t=document.createElement("div");t.id="cos-cost-tip";t.setAttribute("role","tooltip");t.style.cssText="position:fixed;z-index:2147483647;display:none;max-width:300px;background:#111827;color:#F9FAFB;font:600 12px/1.5 Inter,system-ui,sans-serif;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35)";function sh(){if(b.style.display==="none")return;var r=b.getBoundingClientRect();t.style.display="block";t.style.top=(r.bottom+8)+"px";t.style.left=Math.max(8,Math.min(r.right-300,window.innerWidth-308))+"px";}function hi(){t.style.display="none";}b.addEventListener("mouseenter",sh);b.addEventListener("focus",sh);b.addEventListener("mouseleave",hi);b.addEventListener("blur",hi);document.addEventListener("keydown",function(e){if(e.key==="Escape")hi();});document.body.appendChild(b);document.body.appendChild(t);txt();}function txt(){if(!t)return;t.innerHTML="<strong style=\"color:#FDE68A\">Staging · test data only</strong><br>"+(J?"AI cost today "+f(J.today||0)+"<br>This month "+f(J.month||0)+"<br>Total "+f(J.total||0)+"<br>"+(J.calls||0)+" AI calls (all apps, all clients)":"AI cost is loading…");}function vis(e){var r=e.getBoundingClientRect();return r.width>0&&r.height>0;}function adm(w){var x=((w.textContent||"")+" "+[].map.call(w.querySelectorAll("[title]"),function(n){return n.title;}).join(" ")).toLowerCase();for(var i=0;i<ADM.length;i++)if(x.indexOf(ADM[i])>=0)return true;return false;}function anchor(){for(var i=0;i<SEL.length;i++){var c=typeof SEL[i]==="string"?{s:SEL[i]}:SEL[i],L=document.querySelectorAll(c.s);for(var k=0;k<L.length;k++){var e=L[k];if(e===b||!vis(e))continue;if(c.txt&&(e.textContent||"").trim().toLowerCase()!==c.txt)continue;if(c.who){var w=e.parentElement;if(!w||!adm(w))continue;for(var m=w.firstElementChild;m;m=m.nextElementSibling)if(vis(m)){e=m;break;}}return e;}}return null;}function place(){mk();var a=anchor();if(!a){b.style.display="none";t.style.display="none";return;}var r=a.getBoundingClientRect();b.style.display="block";var w=b.offsetWidth,h=b.offsetHeight;b.style.left=(r.left-w-8)+"px";b.style.top=(r.top+(r.height-h)/2)+"px";}function p(){fetch(U,{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(j){J=j;txt();}}).catch(function(){});}function go(){place();p();setInterval(place,500);window.addEventListener("scroll",place,{passive:true});window.addEventListener("resize",place);setInterval(function(){if(!document.hidden)p();},60000);}if(document.body)go();else document.addEventListener("DOMContentLoaded",go);})();</script></body>
+</body>
 </html>
