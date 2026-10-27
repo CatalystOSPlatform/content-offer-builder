@@ -369,7 +369,7 @@ class Component extends DCLogic {
   // sets the text back to Auto (white or dark by contrast); a picked text color that fails AA shows a warning. ----
   ccModel(x, dBg, dFg, set) { const C = this.P && this.P.colorKit && this.P.colorKit(); if (!C) return { on: false }; const b = this.D.siteBrand(); x = x || {};
     return C.controls({ palette: C.palette([b.primary, b.secondary, b.accent].concat(b.colors || [])), bg: x.bg || '', opacity: x.bgOp, fg: x.fg || '', defaultBg: dBg, defaultFg: dFg,
-      onBg: (bg) => set({ bg, fg: '', ...(bg ? {} : { bgOp: null }) }), onOpacity: (o) => set({ bgOp: o >= 100 ? null : o, fg: '' }), onFg: (fg) => set({ fg }) }); }
+      /* a text color the person picked stays when the background changes (Erika, Oct 27); Auto follows it */ onBg: (bg) => set({ bg, ...(bg ? {} : { bgOp: null }) }), onOpacity: (o) => set({ bgOp: o >= 100 ? null : o }), onFg: (fg) => set({ fg }) }); }
   patchColors(obj, patch) { const c = { ...(obj || {}) }; Object.keys(patch).forEach((k) => { if (patch[k] === '' || patch[k] == null) delete c[k]; else c[k] = patch[k]; }); return c; }
   setDocColor(part, patch) { this.update((x) => { if (!x.doc) return x; const all = { ...(x.doc.colors || {}) }; const c = this.patchColors(all[part], patch); if (Object.keys(c).length) all[part] = c; else delete all[part]; x.doc.colors = all; return x; }); }
   setSecColor(pi, si, patch) { this.update((x) => { const sec = x.pages[pi] && x.pages[pi].sections[si]; if (sec) { Object.keys(patch).forEach((k) => { if (patch[k] === '' || patch[k] == null) delete sec[k]; else sec[k] = patch[k]; }); x.pages[pi].approved = null; } return x; }); }
