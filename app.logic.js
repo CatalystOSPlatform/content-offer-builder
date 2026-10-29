@@ -227,7 +227,7 @@ class Component extends DCLogic {
     const items = [part('Objective', st.objective), part('Audience', st.audience), part('Angle', st.angle), t(st.fit) && { name: 'Why this kind of offer', why: t(st.fit) }].filter(Boolean);
     const pages = (st.pages || []).filter((p) => p && t(p.why)).map((p) => ({ name: (t(p.job) || t(p.key)), why: t(p.why) }));
     const emails = (st.emails || []).filter((e) => e && t(e.why)).map((e) => ({ name: [t(e.name), t(e.when)].filter(Boolean).join(' · ') || 'Email', why: t(e.why) }));
-    const own = (t(st.summary) || items.length || pages.length || emails.length) ? { title: 'The Strategist’s plan for this offer', summary: t(st.summary), items, sections: [pages.length && { heading: 'Why each page', items: pages }, emails.length && { heading: 'Why each email', items: emails }].filter(Boolean) } : null;
+    const own = (t(st.summary) || items.length || pages.length || emails.length) ? { title: 'CatalystOS’s plan for this offer', summary: t(st.summary), items, sections: [pages.length && { heading: 'Why each page', items: pages }, emails.length && { heading: 'Why each email', items: emails }].filter(Boolean) } : null;
     return S.merge(camp, own);
   }
   campaign(id) { return this.state.camps.find((c) => c.id === id) || null; }
