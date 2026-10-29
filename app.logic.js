@@ -864,9 +864,9 @@ class Component extends DCLogic {
   // Webinars and workshops: make the event graphics (Zoom slides, banners, LinkedIn post, newsletter) in the Event Graphics Builder.
   openGraphics = async () => {
     const o = this.offer(); if (!o) return; const st = o.strategy || {};
-    const w = window.open('', '_blank'); this.setState({ gfxNote: 'Opening the Campaign Graphics Builder…' });
-    try { const url = await this.D.eventGraphicsUrl(o, st.title || o.title || o.name); if (w) { w.opener = null; w.location.href = url; } else location.href = url; this.setState({ gfxNote: '' }); }
-    catch (e) { if (w) w.close(); this.setState({ gfxNote: 'Could not open the Campaign Graphics Builder.' }); }
+    const w = window.open('', '_blank'); this.setState({ gfxNote: '' }); const S = window.cosStatus || (() => null); S('offer-gfx', 'Opening Campaign Graphics', { estimate: 10 }); // the one status popup (Erika, Oct 28)
+    try { const url = await this.D.eventGraphicsUrl(o, st.title || o.title || o.name); if (w) { w.opener = null; w.location.href = url; } else location.href = url; this.setState({ gfxNote: '' }); S('offer-gfx', null); }
+    catch (e) { if (w) w.close(); this.setState({ gfxNote: 'Could not open the Campaign Graphics Builder.' }); S('offer-gfx', null, { fail: 'Couldn\u2019t open Campaign Graphics. Try again.' }); }
   };
   download = async () => {
     const o = this.offer(); if (!o) return; const b = this.pageBrand(o), O = this.O.offerById(o.kind), E = this.O.espById(o.esp);
